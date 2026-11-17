@@ -756,7 +756,7 @@ function Login({ onLogin }: { onLogin: (u: User) => void }) {
                 name="password"
                 type="password"
                 autoComplete={setup ? "new-password" : "current-password"}
-                minLength={setup ? 12 : 1}
+                minLength={setup ? 8 : 1}
                 maxLength={128}
                 required
               />
@@ -1833,10 +1833,10 @@ function SettingsView({
                 type="password"
                 autoComplete="new-password"
                 required
-                minLength={12}
+                minLength={8}
                 maxLength={128}
               />
-              <small>Pelo menos 12 caracteres.</small>
+              <small>Pelo menos 8 caracteres.</small>
             </label>
             <button className="button dark" disabled={busy}>
               Alterar senha <Lock size={17} />
@@ -1897,7 +1897,7 @@ function SettingsView({
                   type="password"
                   autoComplete="new-password"
                   required
-                  minLength={12}
+                  minLength={8}
                   maxLength={128}
                 />
               </label>
@@ -2005,7 +2005,7 @@ function SettingsView({
                     name="password"
                     type="password"
                     autoComplete="new-password"
-                    minLength={12}
+                    minLength={8}
                     maxLength={128}
                     required
                   />

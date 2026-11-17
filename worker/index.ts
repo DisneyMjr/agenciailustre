@@ -149,7 +149,7 @@ async function api(req: Request, env: Env) {
     if (await env.DB.prepare("SELECT id FROM users LIMIT 1").first())
       fail(409, "A conta inicial já foi criada.");
     const password = field(data.password, 128, true);
-    check(password.length >= 12, "Use uma senha com pelo menos 12 caracteres.");
+    check(password.length >= 8, "Use uma senha com pelo menos 8 caracteres.");
     const user: User = {
       id: crypto.randomUUID(),
       name: field(data.name, 100, true),
@@ -327,7 +327,7 @@ async function api(req: Request, env: Env) {
     )
       fail(403, "Senha atual incorreta.");
     const password = field(data.password, 128, true);
-    check(password.length >= 12, "Use pelo menos 12 caracteres.");
+    check(password.length >= 8, "Use pelo menos 8 caracteres.");
     await env.DB.batch([
       env.DB.prepare("UPDATE users SET password_hash=? WHERE id=?").bind(
         await passwordHash(password),
@@ -352,7 +352,7 @@ async function api(req: Request, env: Env) {
       const data = await body(req);
       check(["team", "client"].includes(String(data.role)), "Perfil inválido.");
       const password = field(data.password, 128, true);
-      check(password.length >= 12, "Use pelo menos 12 caracteres.");
+      check(password.length >= 8, "Use pelo menos 8 caracteres.");
       const client =
         data.role === "client" ? field(data.client_id, 36, true) : null;
       if (
@@ -407,7 +407,7 @@ async function api(req: Request, env: Env) {
       );
     else if (data.action === "password") {
       const password = field(data.password, 128, true);
-      check(password.length >= 12, "Use pelo menos 12 caracteres.");
+      check(password.length >= 8, "Use pelo menos 8 caracteres.");
       update = env.DB.prepare(
         "UPDATE users SET password_hash=? WHERE id=?",
       ).bind(await passwordHash(password), target);

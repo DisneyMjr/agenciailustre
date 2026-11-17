@@ -6,7 +6,7 @@ import { mkdtemp, mkdir } from "node:fs/promises";
 import { resolve } from "node:path";
 const base = "http://127.0.0.1:17887";
 const cli = resolve("node_modules/wrangler/bin/wrangler.js");
-const fixturePassword = "Local-test-fixture-12345!";
+const fixturePassword = "91827364";
 let child,
   adminCookie,
   clientCookie,
@@ -122,6 +122,16 @@ test("bootstrap requires valid token and is one-time only", async () => {
     ).status,
     403,
   );
+  const short = await request("/setup", {
+    method: "POST",
+    data: {
+      ...data,
+      password: "1234567",
+      token: "local-test-bootstrap-fixture",
+    },
+  });
+  assert.equal(short.status, 400);
+  assert.match(short.body.error, /8 caracteres/);
   const r = await request("/setup", {
     method: "POST",
     data: { ...data, token: "local-test-bootstrap-fixture" },
@@ -208,6 +218,21 @@ test("creates clients and project with validated prepared SQL data", async () =>
   );
 });
 test("admin can create scoped client and team accounts", async () => {
+  assert.equal(
+    (
+      await request("/users", {
+        method: "POST",
+        cookie: adminCookie,
+        data: {
+          name: "Invalid password",
+          email: "short@example.invalid",
+          password: "1234567",
+          role: "team",
+        },
+      })
+    ).status,
+    400,
+  );
   for (const [role, address, client_id] of [
     ["client", "client@example.invalid", clientA],
     ["team", "team@example.invalid", ""],
@@ -565,7 +590,17 @@ test("password change invalidates all current user sessions", async () => {
       await request("/password", {
         method: "POST",
         cookie: clientCookie,
-        data: { current: fixturePassword, password: "A-new-fixture-password!" },
+        data: { current: fixturePassword, password: "1234567" },
+      })
+    ).status,
+    400,
+  );
+  assert.equal(
+    (
+      await request("/password", {
+        method: "POST",
+        cookie: clientCookie,
+        data: { current: fixturePassword, password: "Alter12!" },
       })
     ).status,
     200,
@@ -574,8 +609,18 @@ test("password change invalidates all current user sessions", async () => {
 });
 
 test("administrator can reset and reactivate access without removing records", async () => {
+  assert.equal(
+    (
+      await request("/users/" + teamId, {
+        method: "PATCH",
+        cookie: adminCookie,
+        data: { action: "password", password: "1234567" },
+      })
+    ).status,
+    400,
+  );
   for (const data of [
-    { action: "password", password: "Reset-fixture-password-123!" },
+    { action: "password", password: "Reset12!" },
     { action: "enable" },
   ])
     assert.equal(
@@ -594,7 +639,7 @@ test("administrator can reset and reactivate access without removing records", a
         method: "POST",
         data: {
           email: "team@example.invalid",
-          password: "Reset-fixture-password-123!",
+          password: "Reset12!",
         },
       })
     ).status,
@@ -739,7 +784,7 @@ test("browser: client approves its own delivery without general write access", a
     method: "POST",
     data: {
       email: "client@example.invalid",
-      password: "A-new-fixture-password!",
+      password: "Alter12!",
     },
   });
   assert.equal(login.status, 200);
@@ -761,7 +806,7 @@ test("browser: client approves its own delivery without general write access", a
       .getByRole("heading", {
         name: "Campanha Primavera · entrega",
         exact: true,
-        level:2,
+        level: 2,
       })
       .waitFor();
     await page.screenshot({
