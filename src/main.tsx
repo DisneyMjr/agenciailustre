@@ -1,9 +1,9 @@
+import { IlustreMark } from "./brand-mark";
 import React, { useState, useEffect, FormEvent } from "react";
 import { createRoot } from "react-dom/client";
 import {
   ArrowUpRight,
   ArrowRight,
-  Asterisk,
   Menu,
   X,
   Plus,
@@ -126,7 +126,7 @@ function Brand({ light = false }: { light?: boolean }) {
       href="/"
       aria-label="Agência Ilustre, início"
     >
-      <Asterisk size={35} strokeWidth={2.5} />
+      <IlustreMark size={35} strokeWidth={2.5} />
       <span>
         ilustre<span className="brand-dot">.</span>
         <small>AGÊNCIA CRIATIVA</small>
@@ -285,7 +285,7 @@ function Website() {
             <div className="art-orbit orbit-one" />
             <div className="art-orbit orbit-two" />
             <div className="art-orbit orbit-three" />
-            <Asterisk className="art-star" strokeWidth={1.5} />
+            <IlustreMark className="art-star" strokeWidth={1.5} />
             <div className="art-label">
               ideias em
               <br />
@@ -299,9 +299,9 @@ function Website() {
         </section>
         <div className="ribbon" aria-hidden="true">
           <div>
-            ESTRATÉGIA <Asterisk /> DESIGN <Asterisk /> CONTEÚDO <Asterisk />{" "}
-            PRESENÇA DIGITAL <Asterisk /> ESTRATÉGIA <Asterisk /> DESIGN{" "}
-            <Asterisk /> CONTEÚDO <Asterisk />
+            ESTRATÉGIA <IlustreMark /> DESIGN <IlustreMark /> CONTEÚDO{" "}
+            <IlustreMark /> PRESENÇA DIGITAL <IlustreMark /> ESTRATÉGIA{" "}
+            <IlustreMark /> DESIGN <IlustreMark /> CONTEÚDO <IlustreMark />
           </div>
         </div>
         <section className="about wrap section" id="sobre">
@@ -400,7 +400,7 @@ function Website() {
                 Espaço para o <em>extraordinário.</em>
               </h2>
             </div>
-            <Asterisk className="process-star" />
+            <IlustreMark className="process-star" />
           </div>
           <div className="steps">
             {[
@@ -455,7 +455,7 @@ function Website() {
               aria-label="Ilustração do portal, sem dados reais"
             >
               <div className="illustration-top">
-                <Asterisk size={22} />
+                <IlustreMark size={22} />
                 <span>SEU ESPAÇO ILUSTRE</span>
                 <span className="tiny-dot" />
               </div>
@@ -502,7 +502,7 @@ function Website() {
               Conte um pouco sobre sua marca e o que você quer construir. Vamos
               conhecer o seu momento.
             </p>
-            <Asterisk className="contact-star" />
+            <IlustreMark className="contact-star" />
           </div>
           {sent ? (
             <div className="success-block" role="status">
@@ -653,7 +653,7 @@ function Portal() {
   if (loading)
     return (
       <div className="loading-screen">
-        <Asterisk size={40} />
+        <IlustreMark size={40} />
         <p>Abrindo seu espaço...</p>
       </div>
     );
@@ -699,7 +699,7 @@ function Login({ onLogin }: { onLogin: (u: User) => void }) {
             Tudo em um lugar para criar juntos.
           </p>
         </div>
-        <Asterisk className="login-star" />
+        <IlustreMark className="login-star" />
         <small>AGÊNCIA ILUSTRE / ÁREA DE GESTÃO</small>
       </aside>
       <section>
@@ -906,7 +906,7 @@ function Dashboard({ user, onLogout }: { user: User; onLogout: () => void }) {
         </nav>
         <div className="sidebar-bottom">
           <div className="sidebar-note">
-            <Asterisk size={22} />
+            <IlustreMark size={22} />
             <p>
               Clareza para criar.
               <br />
@@ -1010,7 +1010,7 @@ function Dashboard({ user, onLogout }: { user: User; onLogout: () => void }) {
 function Empty({ title, text }: { title: string; text: string }) {
   return (
     <div className="empty">
-      <Asterisk size={34} />
+      <IlustreMark size={34} />
       <h3>{title}</h3>
       <p>{text}</p>
     </div>

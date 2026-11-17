@@ -1,8 +1,8 @@
+import { IlustreMark } from "./brand-mark";
 import { useEffect, useState } from "react";
 import {
   ArrowUpRight,
   ArrowRight,
-  Asterisk,
   Plus,
   Users,
   Contact,
@@ -607,7 +607,7 @@ export function WorkspaceOverview({
           </p>
           <h1>
             Olá, {user.name.split(" ")[0]}
-            <span className="greeting-star">✳</span>
+            <IlustreMark className="greeting-star" size={27} />
           </h1>
           <p>
             {user.role === "client"
@@ -644,7 +644,7 @@ export function WorkspaceOverview({
           </p>
         </div>
         <div className="welcome-stamp">
-          <Asterisk />
+          <IlustreMark />
           <span>
             MENOS RUÍDO.
             <br />
