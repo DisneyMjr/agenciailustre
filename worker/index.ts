@@ -12,7 +12,9 @@ import {
   passwordVerify,
   recordData,
 } from "./security";
-interface Env {
+import { dashboardSummary } from "./summary";
+import { configured, syncContact, MauticEnv } from "./mautic";
+interface Env extends MauticEnv {
   DB: D1Database;
   ASSETS: Fetcher;
   BOOTSTRAP_TOKEN?: string;
@@ -211,6 +213,93 @@ async function api(req: Request, env: Env) {
   const user = await current(req, env);
   if (!user) fail(401, "Entre na sua conta para continuar.");
   if (path === "/api/me" && method === "GET") return json({ user });
+  if (path === "/api/summary" && method === "GET")
+    return json({ summary: await dashboardSummary(env.DB, user) });
+  const approval = path.match(/^\/api\/projects\/([a-f0-9-]{36})\/approval$/);
+  if (approval && method === "POST") {
+    if (user.role !== "client" || !user.client_id)
+      fail(403, "Apenas o cliente vinculado pode aprovar.");
+    const input = await body(req);
+    check(
+      ["approve", "changes"].includes(String(input.decision)),
+      "Decisão inválida.",
+    );
+    const comment = field(input.comment ?? "", 2000);
+    if (input.decision === "changes")
+      check(comment.length >= 5, "Descreva o ajuste necessário.");
+    const patch = {
+      status: input.decision === "approve" ? "Concluído" : "Em andamento",
+      approval_decision: input.decision,
+      approval_comment: comment,
+      approval_by: user.id,
+      approval_at: new Date().toISOString(),
+    };
+    const changed = await env.DB.prepare(
+      "UPDATE records SET data=json_patch(data,?),updated_at=CURRENT_TIMESTAMP WHERE id=? AND kind='projects' AND client_id=? AND archived=0 AND json_extract(data,'$.status')='Em aprovação'",
+    )
+      .bind(JSON.stringify(patch), approval[1], user.client_id)
+      .run();
+    if (!changed.meta.changes)
+      fail(409, "O projeto não está disponível para aprovação neste acesso.");
+    await env.DB.prepare(
+      "INSERT INTO audit(user_id,action,record_id) VALUES(?,?,?)",
+    )
+      .bind(user.id, "project_" + input.decision, approval[1])
+      .run();
+    return json({ ok: true });
+  }
+  if (path === "/api/integrations" && method === "GET") {
+    if (user.role !== "admin") fail(403, "Apenas administradores.");
+    return json({
+      mautic: { configured: configured(env) },
+      fiscal: { provider: "manual", emissionEnabled: false },
+    });
+  }
+  const sync = path.match(/^\/api\/integrations\/mautic\/([a-f0-9-]{36})$/);
+  if (sync && method === "POST") {
+    if (user.role !== "admin") fail(403, "Apenas administradores.");
+    if (!configured(env)) fail(503, "Mautic ainda não configurado.");
+    const data = await body(req);
+    check(
+      data.confirmed === true,
+      "Confirme a autorização de marketing do contato.",
+    );
+    const evidence = field(data.evidence, 1000, true);
+    check(
+      evidence.length >= 10,
+      "Informe a origem e a data da autorização de marketing.",
+    );
+    const row = await env.DB.prepare(
+      "SELECT data FROM records WHERE id=? AND kind='leads' AND archived=0",
+    )
+      .bind(sync[1])
+      .first<{ data: string }>();
+    if (!row) fail(404, "Contato não encontrado.");
+    const contact = JSON.parse(row.data);
+    const address = email(contact.email);
+    await limit(env, "mautic:" + user.id, 10, 60);
+    const providerId = await syncContact(env, {
+      name: contact.name,
+      email: address,
+      phone: contact.phone,
+    });
+    await env.DB.batch([
+      env.DB.prepare(
+        "UPDATE records SET data=json_patch(data,?),updated_at=CURRENT_TIMESTAMP WHERE id=?",
+      ).bind(
+        JSON.stringify({
+          mautic_id: providerId,
+          mautic_synced_at: new Date().toISOString(),
+          marketing_consent_evidence: evidence,
+        }),
+        sync[1],
+      ),
+      env.DB.prepare(
+        "INSERT INTO audit(user_id,action,record_id) VALUES(?,?,?)",
+      ).bind(user.id, "mautic_sync", sync[1]),
+    ]);
+    return json({ ok: true, providerId });
+  }
   if (path === "/api/logout" && method === "POST") {
     const token = req.headers
       .get("Cookie")
@@ -405,7 +494,7 @@ async function api(req: Request, env: Env) {
         fail(404, "Registro não encontrado.");
       const statement = id
         ? env.DB.prepare(
-            "UPDATE records SET data=?,client_id=?,updated_at=CURRENT_TIMESTAMP WHERE id=? AND kind=?",
+            "UPDATE records SET data=json_patch(data,?),client_id=?,updated_at=CURRENT_TIMESTAMP WHERE id=? AND kind=?",
           ).bind(JSON.stringify(details), client, recordId, kind)
         : env.DB.prepare(
             "INSERT INTO records(id,kind,client_id,data) VALUES(?,?,?,?)",

@@ -58,11 +58,14 @@ button {
   border: 0;
   background: none;
 }
-a:hover,
-button.text-button:hover {
-  text-decoration: underline;
-  text-underline-offset: 4px;
+@media (hover: hover) and (pointer: fine) {
+  a:hover,
+  button.text-button:hover {
+    text-decoration: underline;
+    text-underline-offset: 4px;
+  }
 }
+
 button:focus-visible,
 a:focus-visible,
 summary:focus-visible {
@@ -139,17 +142,22 @@ html {
     transform 0.2s,
     background 0.2s;
 }
-.button:hover {
-  transform: translateY(-2px);
-  text-decoration: none;
+@media (hover: hover) and (pointer: fine) {
+  .button:hover {
+    text-decoration: none;
+  }
 }
+
 .dark {
   background: var(--green);
   color: #fff;
 }
-.dark:hover {
-  background: #2d4637;
+@media (hover: hover) and (pointer: fine) {
+  .dark:hover {
+    background: #2d4637;
+  }
 }
+
 .pale {
   background: var(--lime);
   color: var(--green);
@@ -165,9 +173,12 @@ html {
   padding: 9px;
   border-radius: 5px;
 }
-.icon-button:hover {
-  background: #e4e9de;
+@media (hover: hover) and (pointer: fine) {
+  .icon-button:hover {
+    background: #e4e9de;
+  }
 }
+
 .text-button {
   display: inline-flex;
   gap: 8px;
@@ -204,9 +215,12 @@ html {
 .brand.light > svg {
   color: var(--lime);
 }
-.brand:hover {
-  text-decoration: none;
+@media (hover: hover) and (pointer: fine) {
+  .brand:hover {
+    text-decoration: none;
+  }
 }
+
 .site-header {
   height: 112px;
   display: flex;
@@ -969,9 +983,12 @@ textarea::placeholder {
   border-radius: 5px;
   font-size: 12px;
 }
-.sidebar nav button:hover {
-  background: #2a4130;
+@media (hover: hover) and (pointer: fine) {
+  .sidebar nav button:hover {
+    background: #2a4130;
+  }
 }
+
 .sidebar nav button.active {
   background: #d8ee91;
   color: #263823;

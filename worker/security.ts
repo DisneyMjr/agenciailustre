@@ -79,6 +79,17 @@ export function recordData(kind: Kind, input: Record<string, unknown>) {
     result.email = input.email ? email(input.email) : "";
     result.phone = field(input.phone ?? "", 40);
   }
+  if (kind === "leads") {
+    const value = input.value_cents ?? 0;
+    check(
+      typeof value === "number" &&
+        Number.isSafeInteger(value) &&
+        value >= 0 &&
+        value <= 100000000000,
+      "Valor estimado inválido.",
+    );
+    result.value_cents = value;
+  }
   if (["projects", "tasks", "finance", "campaigns"].includes(kind)) {
     const due = field(input.due ?? "", 10);
     check(
@@ -105,6 +116,18 @@ export function recordData(kind: Kind, input: Record<string, unknown>) {
       "Tipo financeiro inválido.",
     );
     result.direction = String(input.direction);
+    result.invoice_number = field(input.invoice_number ?? "", 100);
+    result.invoice_key = field(input.invoice_key ?? "", 100);
+    const invoiceUrl = field(input.invoice_url ?? "", 1000);
+    if (invoiceUrl) {
+      let valid = false;
+      try {
+        const url = new URL(invoiceUrl);
+        valid = url.protocol === "https:" && !url.username && !url.password;
+      } catch {}
+      check(valid, "Use um endereço HTTPS válido para a nota.");
+    }
+    result.invoice_url = invoiceUrl;
   }
   return result;
 }

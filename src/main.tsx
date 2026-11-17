@@ -30,32 +30,14 @@ import {
   Archive,
 } from "lucide-react";
 import "./style.css";
-type User = {
-  id: string;
-  name: string;
-  email: string;
-  role: "admin" | "team" | "client";
-  client_id: string | null;
-  disabled?: number;
-};
-type Data = {
-  name: string;
-  status: string;
-  notes: string;
-  email?: string;
-  phone?: string;
-  due?: string;
-  amount_cents?: number;
-  direction?: string;
-};
-type Entry = {
-  id: string;
-  client_id: string | null;
-  data: Data;
-  updated_at: string;
-};
-type Kind =
-  "clients" | "leads" | "projects" | "tasks" | "finance" | "campaigns";
+import type { User, Data, Entry, Kind, Summary } from "./types";
+import {
+  WorkspaceOverview,
+  ReportsView,
+  Board,
+  WorkCalendar,
+  FinanceInsights,
+} from "./workspace";
 const sections: {
   key: Kind;
   label: string;
@@ -121,6 +103,8 @@ async function api(path: string, method = "GET", data?: unknown) {
   });
   const value = (await res.json()) as {
     error?: string;
+    summary: Summary;
+    mautic: { configured: boolean };
     user: User;
     records: Entry[];
     users: User[];
@@ -814,13 +798,21 @@ function Login({ onLogin }: { onLogin: (u: User) => void }) {
   );
 }
 function Dashboard({ user, onLogout }: { user: User; onLogout: () => void }) {
-  const [active, setActive] = useState<Kind | "overview" | "settings">(
-    "overview",
-  );
+  const [active, setActive] = useState<
+    Kind | "overview" | "settings" | "reports" | "integrations"
+  >("overview");
+  const [createKind, setCreateKind] = useState<Kind | null>(null);
   const [mobile, setMobile] = useState(false);
   const [revision, setRevision] = useState(0);
   const [notice, setNotice] = useState("");
   const [exporting, setExporting] = useState(false);
+  useEffect(() => {
+    const close = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setMobile(false);
+    };
+    window.addEventListener("keydown", close);
+    return () => window.removeEventListener("keydown", close);
+  }, []);
   const available = sections.filter(
     (s) =>
       user.role !== "client" ||
@@ -849,6 +841,13 @@ function Dashboard({ user, onLogout }: { user: User; onLogout: () => void }) {
   }
   return (
     <div className="dashboard">
+      {mobile && (
+        <button
+          className="sidebar-backdrop"
+          aria-label="Fechar navegação"
+          onClick={() => setMobile(false)}
+        />
+      )}
       <aside className={"sidebar " + (mobile ? "show" : "")}>
         <Brand light />
         <p className="sidebar-caption">ESPAÇO DE TRABALHO</p>
@@ -875,6 +874,26 @@ function Dashboard({ user, onLogout }: { user: User; onLogout: () => void }) {
               {s.label}
             </button>
           ))}
+          <button
+            className={active === "reports" ? "active" : ""}
+            onClick={() => {
+              setActive("reports");
+              setMobile(false);
+            }}
+          >
+            <Wallet size={18} /> Relatórios
+          </button>
+          {user.role === "admin" && (
+            <button
+              className={active === "integrations" ? "active" : ""}
+              onClick={() => {
+                setActive("integrations");
+                setMobile(false);
+              }}
+            >
+              <Globe size={18} /> Integrações & fiscal
+            </button>
+          )}
           <button
             className={active === "settings" ? "active" : ""}
             onClick={() => {
@@ -907,6 +926,7 @@ function Dashboard({ user, onLogout }: { user: User; onLogout: () => void }) {
           <button
             className="icon-button mobile-nav"
             aria-label="Alternar navegação"
+            aria-expanded={mobile}
             onClick={() => setMobile(!mobile)}
           >
             {mobile ? <X /> : <Menu />}
@@ -943,13 +963,28 @@ function Dashboard({ user, onLogout }: { user: User; onLogout: () => void }) {
             </p>
           )}
           {active === "overview" ? (
-            <Overview user={user} revision={revision} navigate={setActive} />
+            <WorkspaceOverview
+              user={user}
+              revision={revision}
+              navigate={setActive}
+              request={api}
+              onCreate={(kind) => {
+                setCreateKind(kind);
+                setActive(kind);
+              }}
+            />
+          ) : active === "reports" ? (
+            <ReportsView request={api} />
+          ) : active === "integrations" ? (
+            <IntegrationView />
           ) : active === "settings" ? (
             <SettingsView user={user} onLogout={onLogout} />
           ) : (
             <Records
               key={active}
               kind={active}
+              startNew={createKind === active}
+              onStarted={() => setCreateKind(null)}
               user={user}
               onChange={() => setRevision((v) => v + 1)}
             />
@@ -972,196 +1007,6 @@ function Dashboard({ user, onLogout }: { user: User; onLogout: () => void }) {
     </div>
   );
 }
-function Overview({
-  user,
-  revision,
-  navigate,
-}: {
-  user: User;
-  revision: number;
-  navigate: (k: Kind) => void;
-}) {
-  const [data, setData] = useState<Partial<Record<Kind, Entry[]>>>({});
-  const [error, setError] = useState("");
-  useEffect(() => {
-    let valid = true;
-    const available = sections.filter(
-      (s) =>
-        user.role !== "client" ||
-        ["projects", "tasks", "finance"].includes(s.key),
-    );
-    Promise.all(
-      available.map(
-        async (s) => [s.key, (await api("/records/" + s.key)).records] as const,
-      ),
-    )
-      .then((rows) => {
-        if (valid) setData(Object.fromEntries(rows));
-      })
-      .catch((e) => valid && setError(e.message));
-    return () => {
-      valid = false;
-    };
-  }, [revision, user.role]);
-  const projects = data.projects ?? [];
-  const tasks = data.tasks ?? [];
-  return (
-    <>
-      <div className="page-heading">
-        <div>
-          <p className="eyebrow">SEU DIA, COM MAIS CLAREZA</p>
-          <h1>
-            Olá, {user.name.split(" ")[0]}
-            <span className="greeting-star">✳</span>
-          </h1>
-          <p>Vamos dar movimento às boas ideias?</p>
-        </div>
-        <span className="date-pill">
-          <CalendarDays size={17} />
-          {new Date().toLocaleDateString("pt-BR", {
-            day: "numeric",
-            month: "long",
-          })}
-        </span>
-      </div>
-      {error && (
-        <p role="alert" className="error">
-          {error}
-        </p>
-      )}
-      <div className="overview-banner">
-        <div>
-          <span>UM PASSO DE CADA VEZ.</span>
-          <h2>
-            Organização para abrir
-            <br />
-            espaço à criatividade.
-          </h2>
-          <p>Acompanhe as entregas e mantenha o próximo passo à vista.</p>
-        </div>
-        <Asterisk />
-      </div>
-      <div className="metric-grid">
-        {[
-          {
-            kind: "projects" as Kind,
-            label: "Projetos em aberto",
-            value: projects.filter((r) => r.data.status !== "Concluído").length,
-            icon: FolderOpen,
-          },
-          {
-            kind: "tasks" as Kind,
-            label: "Tarefas a acompanhar",
-            value: tasks.filter((r) => r.data.status !== "Concluída").length,
-            icon: CheckCheck,
-          },
-          {
-            kind: (user.role === "client" ? "finance" : "leads") as Kind,
-            label:
-              user.role === "client"
-                ? "Lançamentos pendentes"
-                : "Novos contatos",
-            value:
-              user.role === "client"
-                ? (data.finance ?? []).filter(
-                    (r) => r.data.status === "Pendente",
-                  ).length
-                : (data.leads ?? []).filter(
-                    (r) => r.data.status === "Novo contato",
-                  ).length,
-            icon: user.role === "client" ? Wallet : Contact,
-          },
-        ].map((m) => (
-          <button
-            className="metric"
-            key={m.kind}
-            onClick={() => navigate(m.kind)}
-          >
-            <span>
-              {m.label}
-              <m.icon size={20} />
-            </span>
-            <strong>{data[m.kind] ? m.value : "—"}</strong>
-            <small>
-              Na página mais recente <ArrowUpRight size={15} />
-            </small>
-          </button>
-        ))}
-      </div>
-      <div className="overview-columns">
-        <section className="panel">
-          <div className="panel-heading">
-            <h2>Projetos em movimento</h2>
-            <button
-              className="text-button"
-              onClick={() => navigate("projects")}
-            >
-              Ver todos <ArrowUpRight size={16} />
-            </button>
-          </div>
-          {projects.length ? (
-            projects.slice(0, 5).map((r) => (
-              <button
-                className="overview-record"
-                key={r.id}
-                onClick={() => navigate("projects")}
-              >
-                <span className="record-symbol">
-                  <FolderOpen size={20} />
-                </span>
-                <span>
-                  <strong>{r.data.name}</strong>
-                  <small>{date(r.data.due)}</small>
-                </span>
-                <span className="badge">{r.data.status || "Sem etapa"}</span>
-              </button>
-            ))
-          ) : (
-            <Empty
-              title="O próximo projeto começa aqui."
-              text={
-                user.role === "client"
-                  ? "Seus projetos aparecerão quando forem vinculados ao seu acesso."
-                  : "Cadastre um projeto e acompanhe sua evolução."
-              }
-            />
-          )}
-        </section>
-        <section className="panel">
-          <div className="panel-heading">
-            <h2>Próximas tarefas</h2>
-            <button
-              className="icon-button"
-              onClick={() => navigate("tasks")}
-              aria-label="Ver tarefas"
-            >
-              <ArrowUpRight size={19} />
-            </button>
-          </div>
-          {tasks.length ? (
-            tasks
-              .filter((r) => r.data.status !== "Concluída")
-              .slice(0, 5)
-              .map((r) => (
-                <div className="task-line" key={r.id}>
-                  <span className="task-circle" />
-                  <div>
-                    <strong>{r.data.name}</strong>
-                    <small>{date(r.data.due)}</small>
-                  </div>
-                </div>
-              ))
-          ) : (
-            <Empty
-              title="Uma agenda com espaço."
-              text="As tarefas cadastradas vão aparecer por aqui."
-            />
-          )}
-        </section>
-      </div>
-    </>
-  );
-}
 function Empty({ title, text }: { title: string; text: string }) {
   return (
     <div className="empty">
@@ -1172,10 +1017,14 @@ function Empty({ title, text }: { title: string; text: string }) {
   );
 }
 function Records({
+  startNew,
+  onStarted,
   kind,
   user,
   onChange,
 }: {
+  startNew: boolean;
+  onStarted: () => void;
   kind: Kind;
   user: User;
   onChange: () => void;
@@ -1189,10 +1038,59 @@ function Records({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [editor, setEditor] = useState<Entry | "new" | null>(null);
+  const [view, setView] = useState<"table" | "board" | "calendar">(
+    ["clients", "finance"].includes(kind) ? "table" : "board",
+  );
+  const [moving, setMoving] = useState<string | null>(null);
+  const [summary, setSummary] = useState<Summary | null>(null);
+  useEffect(() => {
+    if (startNew) {
+      setEditor("new");
+      onStarted();
+    }
+  }, [startNew]);
   const [archive, setArchive] = useState<Entry | null>(null);
   const [busy, setBusy] = useState(false);
   const canEdit =
     user.role !== "client" && (kind !== "finance" || user.role === "admin");
+  useEffect(() => {
+    if (!editor && !archive) return;
+    const previous = document.activeElement as HTMLElement | null;
+    const dialog = document.querySelector<HTMLElement>("[role=dialog]");
+    const focusable = () =>
+      Array.from(
+        dialog?.querySelectorAll<HTMLElement>(
+          "button:not(:disabled),input:not(:disabled),select:not(:disabled),textarea:not(:disabled),a[href]",
+        ) ?? [],
+      );
+    focusable()[0]?.focus();
+    const oldOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const handle = (event: KeyboardEvent) => {
+      if (event.key === "Escape" && !busy) {
+        setEditor(null);
+        setArchive(null);
+      }
+      if (event.key === "Tab") {
+        const list = focusable();
+        const first = list[0],
+          last = list.at(-1);
+        if (event.shiftKey && document.activeElement === first) {
+          event.preventDefault();
+          last?.focus();
+        } else if (!event.shiftKey && document.activeElement === last) {
+          event.preventDefault();
+          first?.focus();
+        }
+      }
+    };
+    document.addEventListener("keydown", handle);
+    return () => {
+      document.body.style.overflow = oldOverflow;
+      document.removeEventListener("keydown", handle);
+      previous?.focus();
+    };
+  }, [!!editor, !!archive, busy]);
   async function load() {
     setLoading(true);
     setError("");
@@ -1202,6 +1100,7 @@ function Records({
       );
       setRows(r.records);
       setMore(r.more);
+      if (kind === "finance") setSummary((await api("/summary")).summary);
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -1214,8 +1113,8 @@ function Records({
   }, [kind, query, page]);
   useEffect(() => {
     if (user.role !== "client")
-      api("/records/clients")
-        .then((r) => setClients(r.records))
+      allClients()
+        .then(setClients)
         .catch(() => {});
   }, [user.role]);
   async function save(e: FormEvent<HTMLFormElement>) {
@@ -1226,6 +1125,10 @@ function Records({
       string,
       unknown
     >;
+    if (kind === "leads")
+      d.value_cents = Math.round(
+        Number(String(d.value || 0).replace(",", ".")) * 100,
+      );
     if (kind === "finance")
       d.amount_cents = Math.round(
         Number(String(d.amount).replace(",", ".")) * 100,
@@ -1261,6 +1164,24 @@ function Records({
       setBusy(false);
     }
   }
+  async function move(entry: Entry, status: string) {
+    if (!canEdit || moving) return;
+    setMoving(entry.id);
+    setError("");
+    try {
+      await api("/records/" + kind + "/" + entry.id, "PUT", {
+        ...entry.data,
+        client_id: entry.client_id,
+        status,
+      });
+      await load();
+      onChange();
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setMoving(null);
+    }
+  }
   const initial = editor && editor !== "new" ? editor.data : null;
   return (
     <>
@@ -1289,6 +1210,49 @@ function Records({
             }}
           >
             <Plus size={18} /> Novo {config.singular.toLowerCase()}
+          </button>
+        )}
+      </div>
+      {kind === "finance" && <FinanceInsights summary={summary} />}
+      {kind === "projects" &&
+        user.role === "client" &&
+        rows
+          .filter((r) => r.data.status === "Em aprovação")
+          .map((r) => (
+            <ProjectApproval
+              key={r.id}
+              entry={r}
+              onChange={() => {
+                void load();
+                onChange();
+              }}
+            />
+          ))}
+      <div
+        className="view-controls"
+        role="group"
+        aria-label="Visualização dos registros"
+      >
+        <button
+          aria-pressed={view === "table"}
+          onClick={() => setView("table")}
+        >
+          Lista
+        </button>
+        {!["clients", "finance"].includes(kind) && (
+          <button
+            aria-pressed={view === "board"}
+            onClick={() => setView("board")}
+          >
+            Quadro
+          </button>
+        )}
+        {["projects", "tasks", "campaigns"].includes(kind) && (
+          <button
+            aria-pressed={view === "calendar"}
+            onClick={() => setView("calendar")}
+          >
+            Calendário
           </button>
         )}
       </div>
@@ -1322,6 +1286,19 @@ function Records({
         )}
         {loading ? (
           <div className="empty">Carregando registros...</div>
+        ) : view === "board" ? (
+          <Board
+            rows={rows}
+            stages={config.statuses}
+            kind={kind}
+            clients={clients}
+            canEdit={canEdit}
+            moving={moving}
+            onMove={move}
+            onEdit={setEditor}
+          />
+        ) : view === "calendar" ? (
+          <WorkCalendar rows={rows} onEdit={setEditor} canEdit={canEdit} />
         ) : rows.length ? (
           <div className="table-scroll">
             <table>
@@ -1344,6 +1321,24 @@ function Records({
                   <tr key={r.id}>
                     <td>
                       <strong>{r.data.name}</strong>
+                      {kind === "finance" && r.data.invoice_number && (
+                        <small className="invoice-reference">
+                          NFS-e {r.data.invoice_number}
+                          {r.data.invoice_url && (
+                            <>
+                              {" "}
+                              ·{" "}
+                              <a
+                                href={r.data.invoice_url}
+                                target="_blank"
+                                rel="noreferrer"
+                              >
+                                Consultar documento
+                              </a>
+                            </>
+                          )}
+                        </small>
+                      )}
                       {r.data.notes && (
                         <details className="record-notes">
                           <summary>Ver detalhes</summary>
@@ -1487,6 +1482,20 @@ function Records({
               {editor === "new" ? "NOVO REGISTRO" : "EDITAR REGISTRO"}
             </p>
             <h2 id="editor-title">{config.singular}</h2>
+            {initial?.approval_decision && (
+              <p className="approval-note">
+                Último retorno do cliente:{" "}
+                {initial.approval_decision === "approve"
+                  ? "Entrega aprovada"
+                  : "Ajustes solicitados"}
+                {initial.approval_comment && (
+                  <>
+                    <br />
+                    {initial.approval_comment}
+                  </>
+                )}
+              </p>
+            )}
             <form onSubmit={save}>
               <label>
                 Nome / título
@@ -1537,6 +1546,19 @@ function Records({
                     </label>
                   </>
                 )}
+                {kind === "leads" && (
+                  <label>
+                    Valor estimado (R$)
+                    <input
+                      name="value"
+                      type="number"
+                      min="0"
+                      max="1000000000"
+                      step="0.01"
+                      defaultValue={(initial?.value_cents ?? 0) / 100}
+                    />
+                  </label>
+                )}
                 {kind === "finance" && (
                   <>
                     <label>
@@ -1549,6 +1571,32 @@ function Records({
                         step="0.01"
                         required
                         defaultValue={(initial?.amount_cents ?? 0) / 100}
+                      />
+                    </label>
+                    <label>
+                      Número da NFS-e
+                      <input
+                        name="invoice_number"
+                        maxLength={100}
+                        defaultValue={initial?.invoice_number}
+                      />
+                    </label>
+                    <label>
+                      Chave / código de verificação
+                      <input
+                        name="invoice_key"
+                        maxLength={100}
+                        defaultValue={initial?.invoice_key}
+                      />
+                    </label>
+                    <label>
+                      Link da nota (HTTPS)
+                      <input
+                        name="invoice_url"
+                        type="url"
+                        pattern="https://.*"
+                        maxLength={1000}
+                        defaultValue={initial?.invoice_url}
                       />
                     </label>
                     <label>
@@ -1582,7 +1630,7 @@ function Records({
                   </select>
                   <small>
                     Apenas registros vinculados aparecem no acesso do cliente. A
-                    lista mostra os 50 clientes mais recentes.
+                    lista inclui os clientes ativos cadastrados.
                   </small>
                 </label>
               )}
@@ -1615,6 +1663,9 @@ function Records({
                 </button>
               </div>
             </form>
+            {kind === "leads" && user.role === "admin" && editor !== "new" && (
+              <MauticSync entry={editor} />
+            )}
           </section>
         </div>
       )}
@@ -2000,3 +2051,256 @@ createRoot(document.getElementById("root")!).render(
     <App />
   </React.StrictMode>,
 );
+
+async function allClients() {
+  const rows: Entry[] = [];
+  for (let page = 0; ; page++) {
+    const result = await api("/records/clients?page=" + page);
+    rows.push(...result.records);
+    if (!result.more) return rows;
+  }
+}
+function IntegrationView() {
+  const [ready, setReady] = useState(false);
+  const [error, setError] = useState("");
+  useEffect(() => {
+    api("/integrations")
+      .then((r) => setReady(r.mautic.configured))
+      .catch((e) => setError(e.message));
+  }, []);
+  return (
+    <>
+      <div className="page-heading">
+        <div>
+          <p className="eyebrow">CONECTE SUA OPERAÇÃO</p>
+          <h1>Integrações & fiscal</h1>
+          {error && (
+            <p className="error" role="alert">
+              {error}
+            </p>
+          )}
+          <p>
+            Amplie o sistema no seu ritmo, com controle sobre serviços e dados.
+          </p>
+        </div>
+      </div>
+      <div className="integration-grid">
+        <section className="panel integration-card">
+          <Send size={26} />
+          <span className="badge">
+            {ready
+              ? "Credenciais configuradas · conexão não verificada"
+              : "Instalação externa necessária"}
+          </span>
+          <h2>Mautic</h2>
+          <p>
+            Automação de marketing, segmentação e campanhas. O Mautic requer
+            servidor PHP, banco de dados e tarefas agendadas; não roda no
+            Cloudflare Workers.
+          </p>
+          <p>
+            O CRM e o planejamento de campanhas já funcionam neste portal.
+            Nenhum contato será inscrito em campanhas automaticamente.
+          </p>
+          <a
+            className="button outline"
+            href="https://github.com/mautic/mautic"
+            target="_blank"
+            rel="noreferrer"
+          >
+            Projeto oficial <ArrowUpRight size={16} />
+          </a>
+        </section>
+        <section className="panel integration-card">
+          <Wallet size={26} />
+          <span className="badge">Emissão no seu sistema atual</span>
+          <h2>Fiscal · ACBr</h2>
+          <p>
+            O financeiro organiza receitas, despesas e vencimentos. Seus
+            lançamentos internos não são notas fiscais.
+          </p>
+          <p>
+            O ACBr oferece componentes nativos que exigem uma instalação externa
+            e configuração fiscal. A API comercial pode cobrar por uso e não foi
+            ativada.
+          </p>
+          <p>
+            Continue emitindo sua NFS-e no portal do governo que você já
+            utiliza. No Financeiro, preencha número da NFS-e, chave de
+            verificação e link da nota. O vínculo é informativo; não comprova
+            autorização fiscal.
+          </p>
+          <a
+            className="button outline"
+            href="https://github.com/Projeto-ACBr-Oficial"
+            target="_blank"
+            rel="noreferrer"
+          >
+            Projeto oficial <ArrowUpRight size={16} />
+          </a>
+        </section>
+      </div>
+      <section className="panel integration-card">
+        <h2>Antes de ativar</h2>
+        <p>
+          Mautic: instância HTTPS, envio de e-mail configurado e credenciais de
+          API mantidas como segredos. Fiscal: tipo de documento, CNPJ,
+          município, regime tributário e, quando exigido, certificado digital.
+          As regras devem ser conferidas com sua contabilidade.
+        </p>
+        <p>
+          Nenhum serviço pago foi contratado. A emissão fiscal automática não
+          está ativa. O envio manual ao Mautic só fica disponível depois de
+          configurar uma instância externa.
+        </p>
+      </section>
+    </>
+  );
+}
+
+import "./system.css";
+
+function MauticSync({ entry }: { entry: Entry }) {
+  const [ready, setReady] = useState(false),
+    [confirmed, setConfirmed] = useState(false),
+    [evidence, setEvidence] = useState(""),
+    [busy, setBusy] = useState(false),
+    [notice, setNotice] = useState("");
+  useEffect(() => {
+    api("/integrations")
+      .then((r) => setReady(r.mautic.configured))
+      .catch(() => setNotice("Não foi possível consultar a configuração."));
+  }, []);
+  async function sync() {
+    setBusy(true);
+    setNotice("");
+    try {
+      await api("/integrations/mautic/" + entry.id, "POST", {
+        confirmed,
+        evidence,
+      });
+      setNotice(
+        "Contato confirmado pelo Mautic. Nenhum disparo de e-mail foi solicitado pelo portal.",
+      );
+    } catch (e) {
+      setNotice((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+  return (
+    <section className="integration-inline">
+      <h3>Sincronizar com Mautic</h3>
+      {!ready ? (
+        <p>
+          Instância externa ainda não configurada. O contato permanece salvo no
+          CRM.
+        </p>
+      ) : (
+        <>
+          <p>
+            Envia apenas nome, e-mail e telefone. Campanhas existentes no Mautic
+            podem reagir à entrada do contato; confira as automações antes de
+            sincronizar.
+          </p>
+          <label className="consent">
+            <input
+              type="checkbox"
+              checked={confirmed}
+              onChange={(e) => setConfirmed(e.target.checked)}
+            />
+            Confirmo que este contato autorizou comunicações de marketing.
+          </label>
+          <label>
+            Origem e data da autorização
+            <textarea
+              value={evidence}
+              maxLength={1000}
+              onChange={(e) => setEvidence(e.target.value)}
+              placeholder="Ex.: formulário com aceite de marketing em 17/11/2026"
+            />
+          </label>
+          <button
+            type="button"
+            className="button outline"
+            disabled={
+              busy ||
+              !confirmed ||
+              evidence.trim().length < 10 ||
+              !entry.data.email
+            }
+            onClick={sync}
+          >
+            {busy ? "Sincronizando..." : "Sincronizar contato"}
+          </button>
+        </>
+      )}
+      {notice && <p role="status">{notice}</p>}
+    </section>
+  );
+}
+function ProjectApproval({
+  entry,
+  onChange,
+}: {
+  entry: Entry;
+  onChange: () => void;
+}) {
+  const [comment, setComment] = useState(""),
+    [busy, setBusy] = useState(false),
+    [error, setError] = useState("");
+  async function submit(decision: string) {
+    setBusy(true);
+    setError("");
+    try {
+      await api("/projects/" + entry.id + "/approval", "POST", {
+        decision,
+        comment,
+      });
+      onChange();
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+  return (
+    <section className="panel approval-card">
+      <span className="eyebrow">SUA APROVAÇÃO</span>
+      <h2>{entry.data.name}</h2>
+      <p>
+        Confira os detalhes da entrega antes de aprovar. A aprovação conclui
+        este projeto; solicitar ajustes devolve à equipe.
+      </p>
+      <label>
+        Comentário / ajustes
+        <textarea
+          value={comment}
+          maxLength={2000}
+          onChange={(e) => setComment(e.target.value)}
+        />
+      </label>
+      {error && (
+        <p className="error" role="alert">
+          {error}
+        </p>
+      )}
+      <div className="form-actions">
+        <button
+          className="button outline"
+          disabled={busy || comment.trim().length < 5}
+          onClick={() => submit("changes")}
+        >
+          Solicitar ajustes
+        </button>
+        <button
+          className="button dark"
+          disabled={busy}
+          onClick={() => submit("approve")}
+        >
+          Aprovar entrega <Check size={16} />
+        </button>
+      </div>
+    </section>
+  );
+}

@@ -9,8 +9,11 @@ O banco de produção já está vinculado no `wrangler.jsonc`; reutilize-o em fu
 ## Funcionalidades
 
 - Site responsivo com serviços, processo, contato persistente no CRM e aviso de privacidade.
-- CRM, clientes, projetos, tarefas, lançamentos financeiros e planejamento de campanhas: criar, pesquisar, editar, paginar e arquivar.
-- Administrador gerencia acessos e exporta os registros, incluindo os arquivados. Equipe acompanha a operação, sem alterar financeiro ou acessos. Cliente consulta apenas projetos, tarefas e financeiro vinculados ao seu próprio cliente.
+- CRM com valores estimados e funil; projetos, tarefas e campanhas em quadros persistentes, lista e calendário de prazos.
+- Clientes, contatos e lançamentos financeiros: criar, pesquisar, editar, paginar e arquivar. Aprovação ou solicitação de ajustes de projetos pelo cliente vinculado.
+- Indicadores agregados sobre todos os registros ativos, relatórios financeiros mensais e exportação CSV. Referências de NFS-e emitida no governo (número, chave e link).
+- Conector manual Mautic OAuth2, desativado até configurar instalação externa e segredos; exige confirmação e evidência de autorização de marketing. [Configuração e limites](docs/INTEGRACOES.md).
+- Administrador gerencia acessos e exporta os registros, incluindo os arquivados. Equipe acompanha a operação, sem alterar financeiro ou acessos. Cliente consulta apenas projetos, tarefas e financeiro vinculados ao seu próprio cliente e responde às aprovações de projetos em etapa própria.
 - Senhas PBKDF2-SHA256 com salt individual, sessões de 8 horas com cookie HttpOnly/SameSite/Secure em HTTPS, proteção de origem, validação de entrada, SQL parametrizado e limites de tentativas.
 - Arquivamento preserva os dados. Não existem clientes, resultados ou depoimentos fictícios na base de produção.
 
@@ -37,14 +40,14 @@ As cotas oficiais do plano gratuito incluem 100 mil requisições Workers/dia e 
 ## Operação e configurações externas
 
 - Cadastre o cliente antes de criar seu acesso. Vincule os projetos, tarefas e lançamentos ao cliente correto. Sem vínculo, são internos.
-- Campanhas são planejamento e registro de produção. **Não há disparo de e-mails, automação de jornadas, pixels de rastreamento ou instalação do Mautic.** Para essas funções será necessário integrar um provedor autorizado e configurar remetente, consentimento, descadastro e DNS. Nada foi contratado.
-- Financeiro é controle interno, sem cobrança automática, PIX, conciliação ou nota fiscal.
+- Campanhas são planejamento e registro de produção. **Não há disparo de e-mails pelo portal, automação de jornadas, pixels de rastreamento ou instalação do Mautic.** Existe um conector manual de contatos, condicionado à instalação externa e aos segredos descritos em [Integrações](docs/INTEGRACOES.md). Para essas funções será necessário integrar um provedor autorizado e configurar remetente, consentimento, descadastro e DNS. Nada foi contratado.
+- Financeiro é controle interno, sem cobrança automática, PIX, conciliação ou emissão fiscal. Pode guardar referências das NFS-e emitidas no governo. ACBr comercial não foi ativado; componentes nativos dependem de infraestrutura e configuração externas.
 - Não há upload de arquivos, Google Drive, Google Calendar ou geração de PDF nesta versão. Não foram ativados serviços externos.
 - O administrador cria e bloqueia acessos e redefine senhas de equipe/clientes; cada pessoa também pode alterar sua senha. Não há e-mail de recuperação. Se o administrador perder acesso, a recuperação exige acesso administrativo ao banco; preserve os dados e não reinicie a configuração inicial.
 - Exportação pelo portal inclui registros e arquivados, mas não senhas/sessões. Para restauração completa, use exportação D1 protegida. Não há restauração automática pelo portal.
 - Revise dados de contato e retenção periodicamente. O texto institucional e a identidade visual são uma proposta inicial; substitua por informações oficiais da agência antes de divulgá-las como posicionamento definitivo.
 - O agendamento diário limpa apenas sessões e contadores de tentativas expirados; não exclui contatos ou dados de negócio.
-- A listagem é paginada em 50 registros. O resumo mostra a página mais recente, sem apresentar contagens parciais como totais da empresa.
+- Listas, quadros e calendários são paginados em 50 registros e respeitam a busca. Indicadores globais e relatórios financeiros são agregados no banco, respeitando o escopo do usuário. Os painéis de projetos/tarefas recentes usam a primeira página, sem prometer uma agenda global. O seletor de cliente percorre todas as páginas de clientes ativos.
 
 ## Referências e escolha da base
 
@@ -60,3 +63,9 @@ codex mcp login cloudflare-api
 ```
 
 Autorize sua própria conta na página oficial e confirme com `codex mcp list`. A autorização é separada do Wrangler e pode exigir reabrir a sessão para disponibilizar as ferramentas. Não compartilhe credenciais. Consulte os [servidores oficiais da Cloudflare](https://developers.cloudflare.com/agents/model-context-protocol/cloudflare/servers-for-cloudflare/).
+
+## Design e validação da evolução
+
+Interface refinada usando os princípios da skill [emil-design-eng](https://github.com/emilkowalski/skills): hierarquia visual, foco visível, hover em ponteiro preciso, feedback de pressão, movimento reduzido e navegação móvel. Não foi copiado um produto de terceiros.
+
+A suíte cobre isolamento entre clientes, aprovação restrita por etapa, contagem acima de 50 registros, referências fiscais, persistência de etapas, calendário, CSV, layout móvel e contrato OAuth Mautic com respostas simuladas. A conexão com um Mautic real ainda requer instalação/configuração externa.
