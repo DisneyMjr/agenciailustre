@@ -2159,6 +2159,7 @@ function IntegrationView() {
 }
 
 import "./system.css";
+import "./appearance.css";
 
 function MauticSync({ entry }: { entry: Entry }) {
   const [ready, setReady] = useState(false),
