@@ -15,7 +15,7 @@
     {
       "binding": "DB",
       "database_name": "agenciailustre",
-      "database_id": "REPLACE_AFTER_D1_CREATION",
+      "database_id": "3804787b-6b34-49bc-8698-d24ea22ec73c",
       "migrations_dir": "migrations",
     },
   ],

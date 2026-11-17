@@ -2,6 +2,10 @@
 
 Site institucional e portal de gestão, criados do zero para `DisneyMjr/agenciailustre`. React + TypeScript + Vite, API Cloudflare Workers e banco D1. Sem assinatura paga, rastreamento publicitário ou dependência de provedor de fontes.
 
+**Site publicado:** https://agenciailustre.disneymjr.workers.dev · **Portal:** https://agenciailustre.disneymjr.workers.dev/portal
+
+O banco de produção já está vinculado no `wrangler.jsonc`; reutilize-o em futuras publicações. Não crie outro banco para atualizar o site. O MCP oficial foi configurado no Codex e autenticado via OAuth separadamente do Wrangler.
+
 ## Funcionalidades
 
 - Site responsivo com serviços, processo, contato persistente no CRM e aviso de privacidade.
@@ -18,12 +22,12 @@ Para os testes: `npx playwright install chromium` e `npm test`. A suíte cria um
 
 ## Publicar gratuitamente na Cloudflare
 
-1. `npx wrangler login`: autorize sua própria conta no navegador. Não envie tokens pelo chat nem os salve no repositório.
+1. `npx wrangler login --use-keyring`: autorize sua própria conta no navegador. O armazenamento criptografado usa o gerenciador de credenciais do sistema. Não envie tokens pelo chat nem os salve no repositório.
 2. Confirme `npx wrangler whoami` e mantenha o plano **Workers Free**. Não habilite Workers Paid, R2, serviços de e-mail pagos ou cobrança automática.
 3. `npx wrangler d1 create agenciailustre`. Substitua somente `database_id` no `wrangler.jsonc` pelo ID retornado, mantendo o banco e os dados existentes em atualizações futuras. Se o banco já existir, use-o em vez de criar outro.
 4. `npm run db:remote` aplica migrações incrementais. Elas não removem tabelas ou registros existentes. Antes de atualizações sobre dados reais, exporte o banco: `npx wrangler d1 export DB --remote --output backup.sql`. Proteja esse backup fora do repositório.
 5. `npm run deploy`. O site e a API serão publicados no mesmo endereço `workers.dev`, com HTTPS gratuito. Não é necessário contratar domínio.
-6. `npx wrangler secret put BOOTSTRAP_TOKEN`. Digite um código aleatório forte no terminal interativo, sem inseri-lo em argumentos, arquivos ou no chat. Abra `/portal/configurar` no site publicado e informe esse código, seu nome, e-mail e uma senha com pelo menos 12 caracteres. A primeira conta é administrativa; a operação só funciona uma vez, com trava transacional no banco.
+6. `npx wrangler secret put BOOTSTRAP_TOKEN`. Digite um código aleatório forte no terminal interativo, sem inseri-lo em argumentos, arquivos ou no chat. Alternativamente, no painel Cloudflare, abra o Worker `agenciailustre` → Configurações → Variáveis e segredos e defina `BOOTSTRAP_TOKEN` como **Segredo**. Abra `/portal/configurar` no site publicado e informe esse código, seu nome, e-mail e uma senha com pelo menos 12 caracteres. A primeira conta é administrativa; a operação só funciona uma vez, com trava transacional no banco.
 7. Após criar a conta inicial, `npx wrangler secret delete BOOTSTRAP_TOKEN`. A autenticação normal continua funcionando. Não apague `setup_lock` nem recrie o banco para tentar entrar novamente.
 
 O login existente do painel Cloudflare não autentica automaticamente o CLI. A autorização OAuth do Wrangler é uma etapa externa necessária. Publicar exige essa autorização; uma prévia local não é publicação.
