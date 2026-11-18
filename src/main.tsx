@@ -1,3 +1,4 @@
+import { useAgencyMotion } from "./agency-motion";
 import {
   AgencyHero,
   AgencyAbout,
@@ -206,6 +207,7 @@ function App() {
   return portal ? <Portal /> : <Website />;
 }
 function Website() {
+  useAgencyMotion();
   const [menu, setMenu] = useState(false);
   const [sent, setSent] = useState(false);
   const [busy, setBusy] = useState(false);

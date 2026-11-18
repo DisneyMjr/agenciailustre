@@ -1325,7 +1325,7 @@ em,
   }
 }
 
-/* Palette chosen by the owner: purple + orange + white. */
+/* Palette: violet accents, neutral surfaces. */
 .hero-art .art-star {
   width: 300px;
   height: 300px;
@@ -1361,10 +1361,10 @@ em,
 }
 :root {
   --brand-primary: #5b2da8;
-  --brand-accent: #e67b27;
+  --brand-accent: #a477ee;
   --brand-paper: #fcfbfe;
   --green: var(--brand-primary);
-  --lime: #f8e9d9;
+  --lime: #e6dcf4;
   --line: #e8e3ef;
   color: #2c263a;
 }

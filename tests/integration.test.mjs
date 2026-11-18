@@ -1173,13 +1173,11 @@ test("browser: administrator uploads a portfolio image and publishes it on the w
       c.fill();
       return canvas.toDataURL("image/jpeg").split(",")[1];
     });
-    await page
-      .getByLabel("Imagem do trabalho")
-      .setInputFiles({
-        name: "portfolio-fixture.jpg",
-        mimeType: "image/jpeg",
-        buffer: Buffer.from(jpeg, "base64"),
-      });
+    await page.getByLabel("Imagem do trabalho").setInputFiles({
+      name: "portfolio-fixture.jpg",
+      mimeType: "image/jpeg",
+      buffer: Buffer.from(jpeg, "base64"),
+    });
     await page.getByLabel("Publicar no site").check();
     await page
       .getByRole("button", { name: "Salvar trabalho", exact: true })
@@ -1231,6 +1229,58 @@ test("browser: administrator uploads a portfolio image and publishes it on the w
       true,
     );
     assert.deepEqual(errors, []);
+  } finally {
+    await browser.close();
+  }
+});
+
+test("browser: marketing motion respects reduced motion and keyboard focus", async () => {
+  const { chromium } = await import("@playwright/test");
+  const browser = await chromium.launch({ headless: true });
+  try {
+    const page = await browser.newPage({
+      viewport: { width: 1440, height: 1000 },
+    });
+    await page.goto(base);
+    await page.getByRole("heading", { name: /Marcas em/ }).waitFor();
+    await page.getByRole("link", { name: "Conheça a Ilustre" }).focus();
+    assert.equal(
+      await page.evaluate(() =>
+        document.activeElement.textContent.includes("Conheça"),
+      ),
+      true,
+    );
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    assert.equal(
+      await page.evaluate(
+        () =>
+          document
+            .querySelector(".agency-site")
+            .getAnimations({ subtree: true })
+            .filter((a) => a.playState === "running").length,
+      ),
+      0,
+    );
+    await page.reload();
+    await page.getByRole("heading", { name: /Marcas em/ }).waitFor();
+    await page.locator(".il-services").scrollIntoViewIfNeeded();
+    assert.equal(
+      await page.evaluate(
+        () =>
+          document
+            .querySelector(".agency-site")
+            .getAnimations({ subtree: true })
+            .filter((a) => a.playState === "running").length,
+      ),
+      0,
+    );
+    await page.setViewportSize({ width: 390, height: 844 });
+    assert.equal(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= innerWidth,
+      ),
+      true,
+    );
   } finally {
     await browser.close();
   }

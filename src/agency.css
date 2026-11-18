@@ -3,7 +3,7 @@
   --il-ink: #16131d;
   --il-paper: #f4f0f7;
   --il-purple: #b896f2;
-  --il-orange: #f18a44;
+  --il-orange: #9f4fe6;
   --il-line: #ffffff20;
   background: var(--il-ink);
   color: #f8f5fb;
@@ -46,7 +46,7 @@
   padding: 11px 17px;
 }
 .agency-site .brand-dot {
-  color: #dc742b;
+  color: #892bdc;
 }
 .agency-site .brand > svg {
   color: #5b2da8;
@@ -104,7 +104,7 @@
   height: 8px;
   width: 8px;
   border-radius: 50%;
-  background: #d67635;
+  background: #8a35d6;
   margin-bottom: 20px;
 }
 .il-hero-link {
@@ -118,7 +118,7 @@
 }
 .il-hero-link > span {
   background: #26222d;
-  color: #f28b48;
+  color: #a154e6;
   width: 43px;
   height: 43px;
   border-radius: 12px;
@@ -179,11 +179,11 @@
 .il-light-object > div {
   position: absolute;
   inset: 0;
-  background: radial-gradient(circle at 25% 15%, #fff5e8, #f6c8a0 38%, #d8895b);
+  background: radial-gradient(circle at 25% 15%, #f4ebfc, #cda4f2 38%, #9d5bd8);
   box-shadow:
     inset 0 1px 2px #fff9,
     0 14px 35px #48233d2a;
-  border: 1px solid #ffe4d5;
+  border: 1px solid #ebdafa;
   border-radius: 32px;
   z-index: -1;
 }
@@ -197,7 +197,7 @@
   font-size: 7px;
   letter-spacing: 1px;
   text-align: center;
-  color: #7b503a;
+  color: #5c3a7b;
 }
 .agency-site .il-hero h1 {
   position: absolute;
@@ -269,7 +269,7 @@
   color: var(--il-purple);
 }
 .il-ribbon .bulb-filament {
-  stroke: #f18a44;
+  stroke: #9f4fe6;
 }
 .il-about {
   display: grid;
@@ -310,15 +310,15 @@
   gap: 11px;
 }
 .il-about-principles svg {
-  color: #e88b4b;
+  color: #9e4de6;
 }
 .il-text-link {
   display: inline-flex;
   align-items: center;
   gap: 25px;
   font-size: 12px;
-  color: #f5d9bd;
-  border-bottom: 1px solid #846749;
+  color: #dbbdf5;
+  border-bottom: 1px solid #684984;
   padding-bottom: 11px;
   margin-top: 34px;
 }
@@ -385,10 +385,10 @@
   transform: translate(-50%, -50%);
   background: radial-gradient(
     circle at 30% 20%,
-    #fff3de,
-    #f9bd84 28%,
-    #ce7138 65%,
-    #813f31
+    #efe2fb,
+    #c18eef 28%,
+    #8838ce 65%,
+    #5b3181
   );
   box-shadow: 0 20px 35px #0c071947;
 }
@@ -399,7 +399,7 @@
   width: 34px;
   height: 34px;
   border-radius: 50%;
-  background: radial-gradient(circle at 28% 23%, #fff5df, #eaaf83 38%, #974228);
+  background: radial-gradient(circle at 28% 23%, #f0e3fb, #ba83ea 38%, #632897);
   box-shadow: 0 8px 13px #0004;
 }
 .il-services {
@@ -447,14 +447,14 @@
   background: #d9c8e6;
 }
 .il-service-art .il-sculpture.orange {
-  background: #f2d5bc;
+  background: #d9bcf2;
 }
 .orange .il-sculpture-ring {
-  border-color: #de945f;
+  border-color: #a25fde;
   box-shadow:
-    inset 5px 5px 14px #fff7e990,
-    inset -7px -9px 15px #aa582e,
-    9px 19px 25px #a35b3430;
+    inset 5px 5px 14px #f4ecfc90,
+    inset -7px -9px 15px #702eaa,
+    9px 19px 25px #6f34a330;
   width: 185px;
   height: 185px;
   border-width: 26px;
@@ -503,8 +503,8 @@
   width: 62px;
   height: 62px;
   border-radius: 50%;
-  background: radial-gradient(circle at 30% 20%, #fff8ec, #efa86e 40%, #ab5d31);
-  box-shadow: 0 12px 20px #6946512a;
+  background: radial-gradient(circle at 30% 20%, #f6eefd, #b272eb 40%, #7231ab);
+  box-shadow: 0 12px 20px #5946692a;
 }
 .content .il-service-art {
   background: #211a2b;
@@ -527,17 +527,17 @@
   letter-spacing: -12px;
 }
 .il-content-bubble > span {
-  color: #cb7846;
+  color: #8c46cb;
 }
 .il-content-mark {
   position: absolute;
   right: 10%;
   top: 43px;
-  color: #f1ba8b;
+  color: #c18def;
   transform: rotate(17deg);
 }
 .digital .il-service-art {
-  background: #efdfd1;
+  background: #e1d1ef;
 }
 .il-browser-art {
   position: absolute;
@@ -570,7 +570,7 @@
   margin-top: 18px;
 }
 .il-browser-art em {
-  color: #d1844b;
+  color: #924bd1;
   font: inherit;
 }
 .il-browser-art i {
@@ -707,7 +707,7 @@
   align-items: center;
   gap: 14px;
   font-size: 12px;
-  color: #f2c99f;
+  color: #cba0f1;
   margin-top: 18px;
 }
 .il-empty-work {
@@ -726,7 +726,7 @@
   height: 67px;
   border: 1px solid #806393;
   border-radius: 50%;
-  color: #dda36e;
+  color: #a96edd;
   font-size: 38px;
   flex-shrink: 0;
 }
@@ -791,7 +791,7 @@
   color: #53336a;
 }
 .il-cta-strip .il-button svg {
-  color: #e9c2a0;
+  color: #c7a0e9;
 }
 .il-process {
   padding-block: 110px;
@@ -861,7 +861,7 @@
   padding-block: 110px;
 }
 .agency-site .contact h2 em {
-  color: #edac76;
+  color: #b577ec;
 }
 .agency-site .contact .eyebrow {
   color: #b196c1;
@@ -904,9 +904,9 @@
   box-shadow: none;
 }
 .agency-site .contact-form .error {
-  color: #ffd5cd;
-  background: #66352e;
-  border: 1px solid #a56152;
+  color: #e7d3f9;
+  background: #4c2e66;
+  border: 1px solid #7e52a5;
 }
 .agency-site .success-block {
   background: #282031;
@@ -963,9 +963,9 @@
   display: flex;
   align-items: center;
   gap: 11px;
-  background: #edaa73;
+  background: #b475eb;
   color: #302035;
-  border: 1px solid #ffd1a5;
+  border: 1px solid #d4b0f4;
   box-shadow: 0 5px 25px #0c071a40;
   padding: 13px 17px;
   border-radius: 999px;
@@ -983,7 +983,7 @@
   color: #876c96;
 }
 .agency-site :focus-visible {
-  outline-color: #f3b77d;
+  outline-color: #bb83ed;
 }
 .agency-site .contact-form input:focus,
 .agency-site .contact-form textarea:focus {
@@ -1074,7 +1074,7 @@
   }
   .agency-site .il-text-link:hover,
   .agency-site .il-work-copy a:hover {
-    color: #ffc991;
+    color: #ca9ff1;
   }
   .il-hero-link:hover {
     text-decoration: none;
@@ -1465,7 +1465,7 @@
   .il-hero h1 svg {
     width: 0.7em;
     height: 0.7em;
-    color: #b96b38;
+    color: #7c38b9;
   }
   .il-hero h1 > span:last-child {
     gap: 8px;
@@ -1742,5 +1742,164 @@
     transition: none !important;
     animation: none !important;
     scroll-behavior: auto !important;
+  }
+}
+
+/* Black and violet art direction, including touch and reduced-motion variants. */
+.agency-site {
+  --il-ink: #0d0b12;
+  --il-purple: #c3a1ff;
+  --il-orange: #a477ee;
+  --il-paper: #17121f;
+}
+.agency-site .site-header {
+  background: #100c16;
+  color: #f1e8ff;
+  border-color: #ffffff18;
+}
+.agency-site .site-header .brand,
+.agency-site .site-header nav a,
+.agency-site .site-header .menu-button {
+  color: #f1e8ff;
+}
+.agency-site .brand-dot,
+.agency-site .bulb-filament {
+  color: #c3a1ff;
+  stroke: currentColor;
+}
+.agency-site .brand > svg {
+  color: #b28aee;
+}
+.agency-site .site-header .portal-link {
+  border-color: #755591;
+}
+.agency-site .il-hero {
+  background: #191020;
+  color: #f3eaff;
+}
+.agency-site .il-hero-photo {
+  filter: grayscale(1) brightness(0.64);
+  transform: translate3d(0, var(--il-parallax, 0px), 0) scale(1.08);
+}
+.agency-site .il-hero-shade {
+  background:
+    linear-gradient(90deg, #191020 0%, #191020 22%, #19102000 68%),
+    linear-gradient(0deg, #191020 0%, #19102000 35%);
+}
+.agency-site .il-hero h1 {
+  color: #ead8ff;
+  mix-blend-mode: normal;
+  text-shadow: 0 2px 30px #08050c55;
+}
+.agency-site .il-hero h1 em {
+  color: #c3a1ff;
+}
+.agency-site .il-hero h1 svg,
+.agency-site .il-hero-bottom,
+.agency-site .il-hero-bottom a {
+  color: #c3a1ff;
+}
+.agency-site .il-light-object {
+  color: #5a268f;
+}
+.agency-site .il-light-object > span {
+  color: #482365;
+}
+.agency-site .il-services {
+  background: #17121f;
+  color: #f3eaff;
+}
+.agency-site .il-service-card {
+  background: #21182d;
+  border-color: #ffffff18;
+  color: #efe2ff;
+}
+.agency-site .il-service-card h3 {
+  color: #efe2ff;
+}
+.agency-site .il-service-detail {
+  color: #c9b8da;
+}
+.agency-site .il-service-card summary {
+  color: #d7c2eb;
+}
+.agency-site .il-section-title > p {
+  color: #bba7cd;
+}
+.agency-site .il-floating-contact {
+  background: #b08ae8;
+  color: #150c20;
+}
+.agency-site::before {
+  content: "";
+  position: fixed;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 3px;
+  background: #b18bea;
+  transform: scaleX(var(--il-progress, 0));
+  transform-origin: left;
+  z-index: 100;
+  pointer-events: none;
+}
+.agency-site .il-work-card {
+  overflow: hidden;
+}
+.agency-site .il-work-card img {
+  transition: transform 600ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+.agency-site .il-service-art {
+  transition: transform 600ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+.agency-site .il-button svg,
+.agency-site .il-text-link svg {
+  transition: transform 220ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+@media (hover: hover) and (pointer: fine) {
+  .agency-site .il-work-card:hover img {
+    transform: scale(1.045);
+  }
+  .agency-site .il-service-card:hover .il-service-art {
+    transform: scale(1.025);
+  }
+  .agency-site .il-service-card summary:hover {
+    background: #30213f;
+  }
+  .agency-site .il-button:hover svg,
+  .agency-site .il-text-link:hover svg {
+    transform: translate(3px, -3px);
+  }
+}
+@media (max-width: 800px) {
+  .agency-site .site-header nav {
+    background: #181020;
+    border-color: #76598c;
+  }
+}
+@media (max-width: 600px) {
+  .agency-site .il-hero-shade {
+    background: linear-gradient(
+      180deg,
+      #191020 0%,
+      #19102000 38%,
+      #19102000 58%,
+      #191020 88%
+    );
+  }
+  .agency-site .il-focus-card {
+    background: #271732ed;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .agency-site *,
+  .agency-site *::before,
+  .agency-site *::after {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
+  .agency-site .il-hero-photo {
+    transform: none;
   }
 }

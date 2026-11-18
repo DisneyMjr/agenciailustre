@@ -84,3 +84,14 @@ A apresentação usa a Velo como referência de hierarquia visual, com textos, c
 | Abertura institucional simples | Retrato editorial, tipografia ampla e elementos da marca | Comunicar a proposta criativa da agência |
 | Sem cadastro público de trabalhos | Portfólio com rascunhos, publicação e imagens pelo administrador | Permitir atualização sem editar código |
 | Contato somente por formulário | Formulário integrado ao CRM e atalho para WhatsApp | Oferecer os canais solicitados |
+
+
+### Movimento e paleta
+
+A apresentação pública agora usa preto e tons de roxo, com entrada de títulos e cards na rolagem, sequência na abertura, parallax discreto no retrato e resposta nos links e imagens. Implementação nativa com IntersectionObserver e Web Animations, sem bibliotecas ou serviços adicionais. A rolagem permanece nativa, os elementos aparecem apenas uma vez e `prefers-reduced-motion` desativa os efeitos, inclusive quando a preferência muda durante a visita. O foco de teclado cancela animações em curso. Dados e regras do painel permanecem preservados.
+
+| Antes | Depois | Por quê |
+| --- | --- | --- |
+| Abertura estática e detalhes laranja | Entrada em sequência e acentos violetas | Aproximar o movimento da referência e seguir a nova paleta |
+| Seções sem transição | Revelação na rolagem, sem repetir entradas | Dar continuidade à leitura |
+| Efeitos sem opção específica | Movimento reduzido e foco imediato por teclado | Manter acesso confortável ao conteúdo |
