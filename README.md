@@ -42,7 +42,7 @@ As cotas oficiais do plano gratuito incluem 100 mil requisições Workers/dia e 
 - Cadastre o cliente antes de criar seu acesso. Vincule os projetos, tarefas e lançamentos ao cliente correto. Sem vínculo, são internos.
 - Campanhas são planejamento e registro de produção. **Não há disparo de e-mails pelo portal, automação de jornadas, pixels de rastreamento ou instalação do Mautic.** Existe um conector manual de contatos, condicionado à instalação externa e aos segredos descritos em [Integrações](docs/INTEGRACOES.md). Para essas funções será necessário integrar um provedor autorizado e configurar remetente, consentimento, descadastro e DNS. Nada foi contratado.
 - Financeiro é controle interno, sem cobrança automática, PIX, conciliação ou emissão fiscal. Pode guardar referências das NFS-e emitidas no governo. ACBr comercial não foi ativado; componentes nativos dependem de infraestrutura e configuração externas.
-- Não há upload de arquivos, Google Drive, Google Calendar ou geração de PDF nesta versão. Não foram ativados serviços externos.
+- Há upload de imagens no portfólio. Não há anexos gerais, Google Drive, Google Calendar ou geração de PDF. Não foram ativados serviços externos.
 - O administrador cria e bloqueia acessos e redefine senhas de equipe/clientes; cada pessoa também pode alterar sua senha. Não há e-mail de recuperação. Se o administrador perder acesso, a recuperação exige acesso administrativo ao banco; preserve os dados e não reinicie a configuração inicial.
 - Exportação pelo portal inclui registros e arquivados, mas não senhas/sessões. Para restauração completa, use exportação D1 protegida. Não há restauração automática pelo portal.
 - Revise dados de contato e retenção periodicamente. O texto institucional e a identidade visual são uma proposta inicial; substitua por informações oficiais da agência antes de divulgá-las como posicionamento definitivo.
@@ -69,3 +69,18 @@ Autorize sua própria conta na página oficial e confirme com `codex mcp list`. 
 Interface refinada usando os princípios da skill [emil-design-eng](https://github.com/emilkowalski/skills): hierarquia visual, foco visível, hover em ponteiro preciso, feedback de pressão, movimento reduzido e navegação móvel. Não foi copiado um produto de terceiros.
 
 A suíte cobre isolamento entre clientes, aprovação restrita por etapa, contagem acima de 50 registros, referências fiscais, persistência de etapas, calendário, CSV, layout móvel e contrato OAuth Mautic com respostas simuladas. A conexão com um Mautic real ainda requer instalação/configuração externa.
+
+
+## Portfólio e nova apresentação
+
+No painel, entre como administrador e abra **Portfólio → Novo trabalho**. Preencha título, categoria, descrição, imagem e, se desejar, um link HTTPS. Marque **Publicar no site** para aparecer na seção Trabalhos; sem essa opção, o trabalho permanece como rascunho. A opção destaque prioriza sua posição. Editar permite atualizar ou retirar da publicação. Arquivar preserva o registro e a imagem no banco.
+
+O envio aceita JPEG, PNG e WebP de até 8 MB. O navegador remove metadados e converte a imagem em JPEG, com dimensão máxima de 1600 pixels e até 600 KB. As imagens ficam no D1 existente; não exigem R2 nem outro serviço. O uso está sujeito às cotas do plano gratuito. A exportação JSON contém os metadados do portfólio; o backup completo do D1 inclui as imagens.
+
+A apresentação usa a Velo como referência de hierarquia visual, com textos, composição e elementos próprios. O retrato editorial foi gerado como imagem conceitual e não representa integrante da equipe ou cliente. Não foram copiados trabalhos ou depoimentos. O WhatsApp comercial autorizado é (37) 99912-9477. Nenhuma configuração externa nova é necessária para o portfólio.
+
+| Antes | Depois | Por quê |
+| --- | --- | --- |
+| Abertura institucional simples | Retrato editorial, tipografia ampla e elementos da marca | Comunicar a proposta criativa da agência |
+| Sem cadastro público de trabalhos | Portfólio com rascunhos, publicação e imagens pelo administrador | Permitir atualização sem editar código |
+| Contato somente por formulário | Formulário integrado ao CRM e atalho para WhatsApp | Oferecer os canais solicitados |

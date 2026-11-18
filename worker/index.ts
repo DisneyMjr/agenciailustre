@@ -14,6 +14,7 @@ import {
 } from "./security";
 import { dashboardSummary } from "./summary";
 import { configured, syncContact, MauticEnv } from "./mautic";
+import { portfolioRoute } from "./portfolio";
 interface Env extends MauticEnv {
   DB: D1Database;
   ASSETS: Fetcher;
@@ -44,7 +45,7 @@ const json = (
 function fail(status: number, message: string): never {
   throw new HttpError(status, message);
 }
-async function body(req: Request) {
+async function body(req: Request, maxBytes = 24000) {
   const reader = req.body?.getReader();
   if (!reader) fail(400, "Pedido vazio.");
   const chunks: Uint8Array[] = [];
@@ -53,7 +54,7 @@ async function body(req: Request) {
     const { done, value } = await reader.read();
     if (done) break;
     size += value.byteLength;
-    if (size > 24000) {
+    if (size > maxBytes) {
       await reader.cancel();
       fail(413, "Pedido muito grande.");
     }
@@ -136,6 +137,8 @@ async function api(req: Request, env: Env) {
   }
   const ip = await digest(req.headers.get("CF-Connecting-IP") ?? "local");
   if (path === "/api/health" && method === "GET") return json({ ok: true });
+  if (path.startsWith("/api/portfolio"))
+    return (await portfolioRoute(req, env.DB, null, body))!;
   if (path === "/api/setup" && method === "POST") {
     if (!env.BOOTSTRAP_TOKEN)
       fail(
@@ -212,6 +215,8 @@ async function api(req: Request, env: Env) {
   }
   const user = await current(req, env);
   if (!user) fail(401, "Entre na sua conta para continuar.");
+  if (path.startsWith("/api/admin/portfolio"))
+    return (await portfolioRoute(req, env.DB, user, body))!;
   if (path === "/api/me" && method === "GET") return json({ user });
   if (path === "/api/summary" && method === "GET")
     return json({ summary: await dashboardSummary(env.DB, user) });
@@ -430,6 +435,12 @@ async function api(req: Request, env: Env) {
     return json({
       exported_at: new Date().toISOString(),
       records: results.results,
+      portfolio: (
+        await env.DB.prepare(
+          "SELECT id,title,category,summary,project_url,published,featured,archived,image_version,created_at,updated_at FROM portfolio ORDER BY created_at",
+        ).all()
+      ).results,
+      portfolio_images_included: false,
     });
   }
   const match = path.match(/^\/api\/records\/([a-z]+)(?:\/([a-f0-9-]{36}))?$/);

@@ -6,6 +6,19 @@ export type User = {
   client_id: string | null;
   disabled?: number;
 };
+export type PortfolioEntry = {
+  id: string;
+  title: string;
+  category: string;
+  summary: string;
+  project_url: string;
+  published: boolean;
+  featured: boolean;
+  image_url: string | null;
+  image_version: string | null;
+  created_at: string;
+  updated_at: string;
+};
 export type Data = {
   name: string;
   status: string;

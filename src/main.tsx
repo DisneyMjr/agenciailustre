@@ -1,3 +1,12 @@
+import {
+  AgencyHero,
+  AgencyAbout,
+  AgencyServices,
+  AgencyProcess,
+  AgencyCTA,
+  whatsapp,
+} from "./agency-sections";
+import { PortfolioGallery, PortfolioManager } from "./portfolio";
 import { IlustreMark } from "./brand-mark";
 import React, { useState, useEffect, FormEvent } from "react";
 import { createRoot } from "react-dom/client";
@@ -104,6 +113,8 @@ async function api(path: string, method = "GET", data?: unknown) {
   const value = (await res.json()) as {
     error?: string;
     summary: Summary;
+    portfolio: import("./types").PortfolioEntry[];
+    id: string;
     mautic: { configured: boolean };
     user: User;
     records: Entry[];
@@ -221,7 +232,7 @@ function Website() {
     }
   }
   return (
-    <>
+    <div className="agency-site">
       <a className="skip" href="#conteudo">
         Pular para o conteúdo
       </a>
@@ -233,6 +244,9 @@ function Website() {
           </a>
           <a href="#servicos" onClick={() => setMenu(false)}>
             O que fazemos
+          </a>
+          <a href="#trabalhos" onClick={() => setMenu(false)}>
+            Trabalhos
           </a>
           <a href="#processo" onClick={() => setMenu(false)}>
             Nosso jeito
@@ -251,188 +265,24 @@ function Website() {
         </button>
       </header>
       <main id="conteudo">
-        <section className="hero wrap">
-          <div className="hero-copy">
-            <p className="eyebrow">
-              <span className="green-dot" /> ESTRATÉGIA, DESIGN & CONEXÃO
-            </p>
-            <h1>
-              Boas ideias.
-              <br />
-              Marcas <em>ilustres.</em>
-            </h1>
-            <p className="hero-description">
-              Transformamos a essência da sua marca em presença. Com estratégia,
-              criatividade e um olhar atento ao que vem depois.
-            </p>
-            <a className="button dark" href="#contato">
-              Vamos criar o próximo capítulo <ArrowUpRight size={20} />
-            </a>
-            <div className="hero-foot">
-              <span>CRIATIVIDADE COM DIREÇÃO.</span>
-              <span>PROPÓSITO EM CADA ENTREGA.</span>
-            </div>
-          </div>
-          <div
-            className="hero-art"
-            aria-label="Composição gráfica da Agência Ilustre"
-          >
-            <div className="art-caption">
-              UM NOVO OLHAR
-              <br />
-              MUDA TUDO.
-            </div>
-            <div className="art-orbit orbit-one" />
-            <div className="art-orbit orbit-two" />
-            <div className="art-orbit orbit-three" />
-            <IlustreMark className="art-star" strokeWidth={1.5} />
-            <div className="art-label">
-              ideias em
-              <br />
-              <i>movimento.</i>
-            </div>
-            <div className="art-bottom">
-              <span>ILUSTRE STUDIO / EXPRESSÃO 01</span>
-              <ArrowUpRight size={32} />
-            </div>
-          </div>
-        </section>
-        <div className="ribbon" aria-hidden="true">
-          <div>
-            ESTRATÉGIA <IlustreMark /> DESIGN <IlustreMark /> CONTEÚDO{" "}
-            <IlustreMark /> PRESENÇA DIGITAL <IlustreMark /> ESTRATÉGIA{" "}
-            <IlustreMark /> DESIGN <IlustreMark /> CONTEÚDO <IlustreMark />
-          </div>
+        <AgencyHero />
+        <div className="il-ribbon" aria-hidden="true">
+          <span>ESTRATÉGIA</span>
+          <IlustreMark />
+          <span>CRIATIVIDADE</span>
+          <IlustreMark />
+          <span>PUBLICIDADE</span>
+          <IlustreMark />
+          <span>CONEXÃO</span>
+          <IlustreMark />
+          <span>ILUSTRE</span>
+          <IlustreMark />
         </div>
-        <section className="about wrap section" id="sobre">
-          <p className="eyebrow">01 / A AGÊNCIA</p>
-          <div>
-            <h2>
-              A sua essência merece
-              <br />
-              uma expressão <em>única.</em>
-            </h2>
-            <div className="about-bottom">
-              <p>
-                Acreditamos em marcas que têm algo a dizer. Por isso, começamos
-                ouvindo: seu momento, seus desafios e as pessoas que você quer
-                alcançar.
-              </p>
-              <p>
-                Conectamos pensamento estratégico e sensibilidade criativa para
-                construir uma comunicação coerente — do primeiro conceito ao
-                encontro com o público.
-              </p>
-            </div>
-          </div>
-        </section>
-        <section className="services section" id="servicos">
-          <div className="wrap">
-            <div className="section-heading">
-              <div>
-                <p className="eyebrow">02 / O QUE FAZEMOS</p>
-                <h2>
-                  Da primeira ideia
-                  <br />à próxima <em>conexão.</em>
-                </h2>
-              </div>
-              <p>
-                Frentes que se complementam.
-                <br />
-                Uma direção que faz sentido.
-              </p>
-            </div>
-            {[
-              {
-                n: "01",
-                icon: Target,
-                title: "Estratégia de marca",
-                text: "Clareza para escolher o caminho. Posicionamento, diagnóstico e planejamento de comunicação.",
-                tags: "POSICIONAMENTO · PLANEJAMENTO · VOZ DA MARCA",
-              },
-              {
-                n: "02",
-                icon: Palette,
-                title: "Identidade & design",
-                text: "Uma linguagem visual que traduz quem você é. Identidades, sistemas gráficos e materiais de comunicação.",
-                tags: "IDENTIDADE VISUAL · DIREÇÃO DE ARTE · DESIGN",
-              },
-              {
-                n: "03",
-                icon: Send,
-                title: "Conteúdo & presença",
-                text: "Conversas relevantes para aproximar sua marca das pessoas. Conteúdo, campanhas e planejamento editorial.",
-                tags: "REDES SOCIAIS · CONTEÚDO · CAMPANHAS",
-              },
-              {
-                n: "04",
-                icon: Globe,
-                title: "Experiências digitais",
-                text: "Espaços digitais para apresentar, conectar e facilitar. Sites institucionais e experiências pensadas para o seu público.",
-                tags: "SITES · INTERFACE · EXPERIÊNCIA",
-              },
-            ].map((s) => (
-              <details className="service-row" key={s.n}>
-                <summary>
-                  <span className="service-number">{s.n}</span>
-                  <s.icon className="service-icon" />
-                  <h3>{s.title}</h3>
-                  <Plus className="service-plus" />
-                </summary>
-                <div className="service-detail">
-                  <p>{s.text}</p>
-                  <small>{s.tags}</small>
-                  <a href="#contato">
-                    Conversar sobre esta frente <ArrowUpRight size={17} />
-                  </a>
-                </div>
-              </details>
-            ))}
-          </div>
-        </section>
-        <section className="process wrap section" id="processo">
-          <div className="section-heading">
-            <div>
-              <p className="eyebrow">03 / NOSSO JEITO</p>
-              <h2>
-                Um processo claro.
-                <br />
-                Espaço para o <em>extraordinário.</em>
-              </h2>
-            </div>
-            <IlustreMark className="process-star" />
-          </div>
-          <div className="steps">
-            {[
-              [
-                "01",
-                "Escutar",
-                "Antes de criar, entender. Mergulhamos na sua marca, nos seus objetivos e no contexto.",
-              ],
-              [
-                "02",
-                "Conectar",
-                "Organizamos as descobertas em uma direção estratégica e um plano de trabalho.",
-              ],
-              [
-                "03",
-                "Criar",
-                "Damos forma às ideias. Compartilhamos caminhos, refinamos juntos e cuidamos dos detalhes.",
-              ],
-              [
-                "04",
-                "Acompanhar",
-                "Cada entrega é parte de uma relação. Mantemos o diálogo e olhamos para os próximos passos.",
-              ],
-            ].map((s) => (
-              <article key={s[0]}>
-                <span>{s[0]}</span>
-                <h3>{s[1]}</h3>
-                <p>{s[2]}</p>
-              </article>
-            ))}
-          </div>
-        </section>
+        <AgencyAbout />
+        <AgencyServices />
+        <PortfolioGallery request={api} />
+        <AgencyCTA />
+        <AgencyProcess />
         <section className="portal-promo">
           <div className="wrap portal-promo-inner">
             <div>
@@ -492,7 +342,7 @@ function Website() {
         </section>
         <section className="contact wrap section" id="contato">
           <div>
-            <p className="eyebrow">04 / VAMOS CONVERSAR</p>
+            <p className="eyebrow">06 / VAMOS CONVERSAR</p>
             <h2>
               O próximo capítulo
               <br />
@@ -502,7 +352,18 @@ function Website() {
               Conte um pouco sobre sua marca e o que você quer construir. Vamos
               conhecer o seu momento.
             </p>
-            <IlustreMark className="contact-star" />
+            <a
+              className="il-contact-whatsapp"
+              href={whatsapp}
+              target="_blank"
+              rel="noreferrer"
+            >
+              <Send size={19} />
+              <span>
+                Prefere uma conversa?<strong>(37) 99912-9477</strong>
+              </span>
+              <ArrowUpRight size={21} />
+            </a>
           </div>
           {sent ? (
             <div className="success-block" role="status">
@@ -598,6 +459,16 @@ function Website() {
           </div>
         </div>
       </footer>
+      <a
+        className="il-floating-contact"
+        href={whatsapp}
+        target="_blank"
+        rel="noreferrer"
+        aria-label="Conversar com a Ilustre pelo WhatsApp"
+      >
+        <Send size={20} />
+        <span>Vamos conversar</span>
+      </a>
       {privacy && (
         <div className="modal-backdrop">
           <section
@@ -638,7 +509,7 @@ function Website() {
           </section>
         </div>
       )}
-    </>
+    </div>
   );
 }
 function Portal() {
@@ -799,7 +670,7 @@ function Login({ onLogin }: { onLogin: (u: User) => void }) {
 }
 function Dashboard({ user, onLogout }: { user: User; onLogout: () => void }) {
   const [active, setActive] = useState<
-    Kind | "overview" | "settings" | "reports" | "integrations"
+    Kind | "overview" | "settings" | "reports" | "integrations" | "portfolio"
   >("overview");
   const [createKind, setCreateKind] = useState<Kind | null>(null);
   const [mobile, setMobile] = useState(false);
@@ -852,6 +723,18 @@ function Dashboard({ user, onLogout }: { user: User; onLogout: () => void }) {
         <Brand light />
         <p className="sidebar-caption">ESPAÇO DE TRABALHO</p>
         <nav aria-label="Gestão">
+          {user.role === "admin" && (
+            <button
+              className={active === "portfolio" ? "active" : ""}
+              onClick={() => {
+                setActive("portfolio");
+                setMobile(false);
+              }}
+            >
+              <Palette size={18} />
+              Portfólio
+            </button>
+          )}
           <button
             className={active === "overview" ? "active" : ""}
             onClick={() => {
@@ -973,6 +856,8 @@ function Dashboard({ user, onLogout }: { user: User; onLogout: () => void }) {
                 setActive(kind);
               }}
             />
+          ) : active === "portfolio" ? (
+            <PortfolioManager request={api} />
           ) : active === "reports" ? (
             <ReportsView request={api} />
           ) : active === "integrations" ? (
@@ -2160,6 +2045,7 @@ function IntegrationView() {
 
 import "./system.css";
 import "./appearance.css";
+import "./agency.css";
 
 function MauticSync({ entry }: { entry: Entry }) {
   const [ready, setReady] = useState(false),

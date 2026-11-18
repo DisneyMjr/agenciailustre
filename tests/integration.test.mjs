@@ -265,6 +265,161 @@ test("admin can create scoped client and team accounts", async () => {
     }
   }
 });
+
+test("portfolio drafts, images, publishing and archive enforce access boundaries", async () => {
+  assert.equal((await request("/admin/portfolio")).status, 401);
+  for (const cookie of [teamCookie, clientCookie])
+    assert.equal((await request("/admin/portfolio", { cookie })).status, 403);
+  const data = {
+    title: "Projeto privado <b>",
+    category: "Identidade visual",
+    summary: "Um trabalho de teste, somente na base isolada.",
+    project_url: "https://example.com/project",
+    published: false,
+    featured: true,
+  };
+  const created = await request("/admin/portfolio", {
+    method: "POST",
+    cookie: adminCookie,
+    data,
+  });
+  assert.equal(created.status, 201);
+  const id = created.body.id;
+  assert.equal(
+    (await request("/portfolio")).body.portfolio.some((p) => p.id === id),
+    false,
+  );
+  const png =
+    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jY1sAAAAASUVORK5CYII=";
+  assert.equal(
+    (
+      await request("/admin/portfolio/" + id + "/image", {
+        method: "POST",
+        cookie: adminCookie,
+        data: { mime: "image/png", base64: png },
+      })
+    ).status,
+    200,
+  );
+  assert.equal(
+    (await fetch(base + "/api/portfolio/" + id + "/image")).status,
+    404,
+  );
+  const privateImage = await fetch(
+    base + "/api/admin/portfolio/" + id + "/image",
+    { headers: { Cookie: adminCookie } },
+  );
+  assert.equal(privateImage.status, 200);
+  assert.equal(
+    Buffer.from(await privateImage.arrayBuffer()).toString("base64"),
+    png,
+  );
+  assert.equal(
+    (
+      await request("/admin/portfolio/" + id, {
+        method: "PUT",
+        cookie: adminCookie,
+        data: { ...data, published: true },
+      })
+    ).status,
+    200,
+  );
+  const published = (await request("/portfolio")).body.portfolio.find(
+    (p) => p.id === id,
+  );
+  assert.equal(published.title, data.title);
+  assert.ok(published.image_url.startsWith("/api/portfolio/"));
+  const image = await fetch(base + published.image_url);
+  assert.equal(image.status, 200);
+  assert.equal(image.headers.get("Content-Type"), "image/png");
+  assert.equal(image.headers.get("Cache-Control"), "no-store");
+  assert.equal(
+    (
+      await request("/admin/portfolio/" + id, {
+        method: "PUT",
+        cookie: adminCookie,
+        data,
+      })
+    ).status,
+    200,
+  );
+  assert.equal((await fetch(base + published.image_url)).status, 404);
+  assert.equal(
+    (
+      await request("/admin/portfolio/" + id, {
+        method: "DELETE",
+        cookie: adminCookie,
+        data: {},
+      })
+    ).status,
+    200,
+  );
+  const exported = (await request("/export", { cookie: adminCookie })).body;
+  assert.equal(exported.portfolio.find((p) => p.id === id).archived, 1);
+  assert.equal(exported.portfolio_images_included, false);
+});
+test("portfolio rejects unsafe project URLs and unsupported image content", async () => {
+  const data = {
+    title: "Validação de mídia",
+    category: "Teste",
+    summary: "",
+    project_url: "",
+    published: false,
+    featured: false,
+  };
+  assert.equal(
+    (
+      await request("/admin/portfolio", {
+        method: "POST",
+        cookie: adminCookie,
+        data: { ...data, project_url: "javascript:alert(1)" },
+      })
+    ).status,
+    400,
+  );
+  const id = (
+    await request("/admin/portfolio", {
+      method: "POST",
+      cookie: adminCookie,
+      data,
+    })
+  ).body.id;
+  for (const file of [
+    { mime: "image/svg+xml", base64: Buffer.from("<svg/>").toString("base64") },
+    { mime: "image/jpeg", base64: Buffer.from("<script/>").toString("base64") },
+    { mime: "image/png", base64: "???" },
+  ])
+    assert.equal(
+      (
+        await request("/admin/portfolio/" + id + "/image", {
+          method: "POST",
+          cookie: adminCookie,
+          data: file,
+        })
+      ).status,
+      400,
+    );
+  assert.equal(
+    (
+      await request("/admin/portfolio/" + id + "/image", {
+        method: "POST",
+        cookie: teamCookie,
+        data: {},
+      })
+    ).status,
+    403,
+  );
+  assert.equal(
+    (await request("/portfolio", { method: "POST", data })).status,
+    405,
+  );
+  await request("/admin/portfolio/" + id, {
+    method: "DELETE",
+    cookie: adminCookie,
+    data: {},
+  });
+});
+
 test("client is limited to own records and cannot mutate or export", async () => {
   const r = await request("/records/projects", { cookie: clientCookie });
   assert.equal(r.body.records.length, 1);
@@ -974,6 +1129,107 @@ test("browser: board persists, calendar and reports work on desktop and mobile",
       path: "test-results/system-crm-mobile.png",
       fullPage: true,
     });
+    assert.deepEqual(errors, []);
+  } finally {
+    await browser.close();
+  }
+});
+
+test("browser: administrator uploads a portfolio image and publishes it on the website", async () => {
+  const { chromium } = await import("@playwright/test");
+  const browser = await chromium.launch({ headless: true });
+  try {
+    const context = await browser.newContext({
+      viewport: { width: 1440, height: 1000 },
+    });
+    const [name, value] = adminCookie.split("=");
+    await context.addCookies([{ name, value, url: base }]);
+    const page = await context.newPage();
+    const errors = [];
+    page.on("pageerror", (e) => errors.push(e.message));
+    await page.goto(base + "/portal");
+    await page.getByRole("heading", { name: /Olá,/ }).waitFor();
+    await page.getByRole("button", { name: "Portfólio", exact: true }).click();
+    await page
+      .getByRole("button", { name: "Novo trabalho", exact: true })
+      .click();
+    await page
+      .getByLabel("Título do trabalho")
+      .fill("Horizonte · identidade visual");
+    await page.getByLabel("Categoria", { exact: true }).fill("Branding");
+    await page
+      .getByLabel("Descrição do projeto")
+      .fill("Projeto de demonstração usado exclusivamente no teste local.");
+    const jpeg = await page.evaluate(() => {
+      const canvas = document.createElement("canvas");
+      canvas.width = 800;
+      canvas.height = 600;
+      const c = canvas.getContext("2d");
+      c.fillStyle = "#5b2da8";
+      c.fillRect(0, 0, 800, 600);
+      c.fillStyle = "#f18a44";
+      c.beginPath();
+      c.arc(400, 300, 160, 0, Math.PI * 2);
+      c.fill();
+      return canvas.toDataURL("image/jpeg").split(",")[1];
+    });
+    await page
+      .getByLabel("Imagem do trabalho")
+      .setInputFiles({
+        name: "portfolio-fixture.jpg",
+        mimeType: "image/jpeg",
+        buffer: Buffer.from(jpeg, "base64"),
+      });
+    await page.getByLabel("Publicar no site").check();
+    await page
+      .getByRole("button", { name: "Salvar trabalho", exact: true })
+      .click();
+    await page.getByRole("dialog").waitFor({ state: "hidden" });
+    await page
+      .getByRole("heading", {
+        name: "Horizonte · identidade visual",
+        exact: true,
+      })
+      .waitFor();
+    await page.screenshot({
+      path: "test-results/portfolio-admin-desktop.png",
+      fullPage: true,
+    });
+    const publicPage = await browser.newPage({
+      viewport: { width: 390, height: 844 },
+    });
+    await publicPage.goto(base + "/#trabalhos");
+    await publicPage
+      .getByRole("heading", {
+        name: "Horizonte · identidade visual",
+        exact: true,
+      })
+      .waitFor();
+    const image = publicPage.getByRole("img", {
+      name: "Horizonte · identidade visual",
+      exact: true,
+    });
+    await image.waitFor();
+    assert.ok(
+      await image.evaluate((node) => node.complete && node.naturalWidth > 0),
+    );
+    assert.equal(
+      await publicPage.evaluate(
+        () => document.documentElement.scrollWidth <= innerWidth,
+      ),
+      true,
+    );
+    await publicPage.screenshot({
+      path: "test-results/portfolio-public-mobile.png",
+      fullPage: true,
+    });
+    assert.equal(
+      await publicPage
+        .getByRole("link", { name: "Conversar com a Ilustre pelo WhatsApp" })
+        .getAttribute("href")
+        .then((v) => v.includes("5537999129477")),
+      true,
+    );
     assert.deepEqual(errors, []);
   } finally {
     await browser.close();
