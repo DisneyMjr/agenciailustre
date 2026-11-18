@@ -30,6 +30,12 @@ try {
   );
   if (protectedResponse.status() !== 401)
     throw Error("Anonymous access must be blocked");
+  const slots = await page.request.get(base + "/api/scheduling/slots");
+  if (slots.status() !== 200 || !Array.isArray((await slots.json()).slots))
+    throw Error("Scheduling unavailable");
+  for (const path of ["/api/meetings", "/api/editorial"])
+    if ((await page.request.get(base + path)).status() !== 401)
+      throw Error("Planning access must be protected");
   if (errors.length) throw Error(errors.join("\n"));
   console.log(
     "Public smoke passed: site, mobile layout, portal, health and anonymous access protection. No production records created.",

@@ -95,3 +95,24 @@ A apresentação pública agora usa preto e tons de roxo, com entrada de título
 | Abertura estática e detalhes laranja | Entrada em sequência e acentos violetas | Aproximar o movimento da referência e seguir a nova paleta |
 | Seções sem transição | Revelação na rolagem, sem repetir entradas | Dar continuidade à leitura |
 | Efeitos sem opção específica | Movimento reduzido e foco imediato por teclado | Manter acesso confortável ao conteúdo |
+
+
+## Agenda de reuniões e calendário editorial
+
+Módulos próprios inspirados nos fluxos de agendamento e gestão editorial, sem incorporar código dos repositórios citados. Não são instalações do Easy!Appointments, Postiz, Documenso ou Pipecat.
+
+### Reuniões
+
+No painel, equipe e administrador abrem **Agenda de reuniões**, escolhem data/hora de Brasília e duração, e adicionam horários. O visitante entra em **Agendar** no site, escolhe um horário e envia nome, e-mail e assunto, com consentimento. A reserva fica **Aguardando confirmação** e ocupa o horário. A equipe confirma ou cancela pelo painel. A agenda é única da agência e impede sobreposição ou duas reservas ativas no mesmo horário, inclusive em pedidos simultâneos. Cancelar libera o horário se ele ainda for futuro; retirar um horário arquiva a disponibilidade sem apagar registros. É necessário cancelar a reunião antes de retirar um horário reservado.
+
+Não há e-mail automático, link de videoconferência ou sincronização externa. A equipe combina os detalhes com o visitante pelos canais informados. Clientes conectados que reservam pelo site veem suas reuniões no portal e podem cancelá-las; reservas anônimas ficam sob acompanhamento da equipe e não são vinculadas apenas pela coincidência do e-mail.
+
+### Editorial
+
+Equipe e administrador abrem **Calendário editorial → Novo conteúdo**. É necessário um cliente ativo. Informe título, canal, data/hora planejada, legenda e link HTTPS opcional para o material. Salve como rascunho e clique **Enviar para aprovação**. O cliente vinculado vê o conteúdo em seu próprio portal e pode aprovar ou solicitar ajustes com comentário. Rascunhos não são visíveis ao cliente. Alterações posteriores voltam a rascunho e exigem nova aprovação. A proteção de versão recusa gravações ou decisões sobre versões antigas.
+
+Após aprovação, publique pelos canais habituais e use **Marcar publicado** para registrar isso no painel. O sistema não envia posts para redes sociais nem afirma que a publicação foi verificada externamente. O histórico preserva as revisões do cliente, com as últimas 100 disponíveis na consulta do conteúdo. O arquivamento mantém conteúdo e revisões na exportação administrativa.
+
+Todas as datas seguem Brasília (UTC−3). O editorial lista 50 conteúdos por página e o calendário destaca apenas a página atual; use a paginação para consultar os demais. A agenda pública mostra até 100 horários livres futuros e o painel até 200 disponibilidades futuras, além da lista paginada de reuniões.
+
+A migração `0004_planning.sql` é aditiva. A exportação administrativa e o backup D1 incluem os registros desses módulos. Não há serviços, contas externas ou segredos adicionais necessários. Continuam aplicáveis as cotas gratuitas da Cloudflare. Contratos/assinatura e atendimento por IA ficam para etapas futuras.

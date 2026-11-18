@@ -1,3 +1,4 @@
+import { planningRoute } from "./planning";
 import {
   kinds,
   Kind,
@@ -139,6 +140,10 @@ async function api(req: Request, env: Env) {
   if (path === "/api/health" && method === "GET") return json({ ok: true });
   if (path.startsWith("/api/portfolio"))
     return (await portfolioRoute(req, env.DB, null, body))!;
+  if (path.startsWith("/api/scheduling/")) {
+    if (method === "POST") await limit(env, `booking:${ip}`, 8, 3600);
+    return (await planningRoute(req, env.DB, await current(req, env), body))!;
+  }
   if (path === "/api/setup" && method === "POST") {
     if (!env.BOOTSTRAP_TOKEN)
       fail(
@@ -217,6 +222,8 @@ async function api(req: Request, env: Env) {
   if (!user) fail(401, "Entre na sua conta para continuar.");
   if (path.startsWith("/api/admin/portfolio"))
     return (await portfolioRoute(req, env.DB, user, body))!;
+  if (/^\/api\/(meetings|editorial)(?:\/|$)/.test(path))
+    return (await planningRoute(req, env.DB, user, body))!;
   if (path === "/api/me" && method === "GET") return json({ user });
   if (path === "/api/summary" && method === "GET")
     return json({ summary: await dashboardSummary(env.DB, user) });
@@ -441,6 +448,14 @@ async function api(req: Request, env: Env) {
         ).all()
       ).results,
       portfolio_images_included: false,
+      meeting_slots: (await env.DB.prepare("SELECT * FROM meeting_slots").all())
+        .results,
+      meetings: (await env.DB.prepare("SELECT * FROM meetings").all()).results,
+      editorial: (await env.DB.prepare("SELECT * FROM editorial").all())
+        .results,
+      editorial_reviews: (
+        await env.DB.prepare("SELECT * FROM editorial_reviews").all()
+      ).results,
     });
   }
   const match = path.match(/^\/api\/records\/([a-z]+)(?:\/([a-f0-9-]{36}))?$/);

@@ -266,6 +266,387 @@ test("admin can create scoped client and team accounts", async () => {
   }
 });
 
+test("meeting scheduling prevents conflicts and exposes no visitor details", async () => {
+  const start = new Date(Date.now() + 7 * 86400000);
+  start.setUTCHours(15, 0, 0, 0);
+  const data = {
+    starts_at: start.toISOString(),
+    ends_at: new Date(+start + 3600000).toISOString(),
+  };
+  assert.equal((await request("/meetings/slots")).status, 401);
+  assert.equal(
+    (
+      await request("/meetings/slots", {
+        method: "POST",
+        cookie: clientCookie,
+        data,
+      })
+    ).status,
+    403,
+  );
+  const slot = await request("/meetings/slots", {
+    method: "POST",
+    cookie: teamCookie,
+    data,
+  });
+  assert.equal(slot.status, 201);
+  assert.equal(
+    (
+      await request("/meetings/slots", {
+        method: "POST",
+        cookie: adminCookie,
+        data,
+      })
+    ).status,
+    409,
+  );
+  const booking = {
+    slot_id: slot.body.id,
+    name: "Pessoa do teste",
+    email: "meeting@example.invalid",
+    notes: "Reunião da agência",
+    consent: true,
+  };
+  assert.equal(
+    (
+      await request("/scheduling/book", {
+        method: "POST",
+        data: { ...booking, consent: false },
+      })
+    ).status,
+    400,
+  );
+  const reservations = await Promise.all([
+    request("/scheduling/book", { method: "POST", data: booking }),
+    request("/scheduling/book", { method: "POST", data: booking }),
+  ]);
+  assert.deepEqual(reservations.map((r) => r.status).sort(), [201, 409]);
+  const id = reservations.find((r) => r.status === 201).body.id;
+  const publicSlots = await request("/scheduling/slots");
+  assert.equal(
+    publicSlots.body.slots.some((s) => s.id === slot.body.id),
+    false,
+  );
+  assert.equal(
+    JSON.stringify(publicSlots.body).includes("meeting@example.invalid"),
+    false,
+  );
+  assert.equal(
+    (await request("/meetings", { cookie: clientCookie })).body.meetings.some(
+      (m) => m.id === id,
+    ),
+    false,
+  );
+  assert.equal(
+    (
+      await request("/meetings/" + id, {
+        method: "PUT",
+        cookie: clientCookie,
+        data: { status: "cancelled" },
+      })
+    ).status,
+    409,
+  );
+  assert.equal(
+    (
+      await request("/meetings/" + id, {
+        method: "PUT",
+        cookie: adminCookie,
+        data: { status: "confirmed" },
+      })
+    ).status,
+    200,
+  );
+  assert.equal(
+    (
+      await request("/meetings/slots/" + slot.body.id, {
+        method: "DELETE",
+        cookie: adminCookie,
+        data: {},
+      })
+    ).status,
+    409,
+  );
+  assert.equal(
+    (
+      await request("/meetings/" + id, {
+        method: "PUT",
+        cookie: teamCookie,
+        data: { status: "cancelled" },
+      })
+    ).status,
+    200,
+  );
+  const own = await request("/scheduling/book", {
+    method: "POST",
+    cookie: clientCookie,
+    data: booking,
+  });
+  assert.equal(own.status, 201);
+  assert.equal(
+    (await request("/meetings", { cookie: clientCookie })).body.meetings.some(
+      (m) => m.id === own.body.id,
+    ),
+    true,
+  );
+  assert.equal(
+    (
+      await request("/meetings/" + own.body.id, {
+        method: "PUT",
+        cookie: clientCookie,
+        data: { status: "confirmed" },
+      })
+    ).status,
+    403,
+  );
+  assert.equal(
+    (
+      await request("/meetings/" + own.body.id, {
+        method: "PUT",
+        cookie: clientCookie,
+        data: { status: "cancelled" },
+      })
+    ).status,
+    200,
+  );
+  assert.equal(
+    (
+      await request("/meetings/slots/" + slot.body.id, {
+        method: "DELETE",
+        cookie: adminCookie,
+        data: {},
+      })
+    ).status,
+    200,
+  );
+  const backup = (await request("/export", { cookie: adminCookie })).body;
+  assert.equal(backup.meetings.find((m) => m.id === id).status, "cancelled");
+  assert.equal(
+    backup.meeting_slots.find((s) => s.id === slot.body.id).archived,
+    1,
+  );
+});
+test("meeting slots reject invalid dates and duration", async () => {
+  for (const data of [
+    { starts_at: "2026-02-30T12:00:00Z", ends_at: "2026-02-30T13:00:00Z" },
+    { starts_at: "2000-01-01T12:00:00Z", ends_at: "2000-01-01T13:00:00Z" },
+    {
+      starts_at: new Date(Date.now() + 86400000).toISOString(),
+      ends_at: new Date(Date.now() + 86400000 + 300000).toISOString(),
+    },
+  ])
+    assert.equal(
+      (
+        await request("/meetings/slots", {
+          method: "POST",
+          cookie: adminCookie,
+          data,
+        })
+      ).status,
+      400,
+    );
+});
+test("editorial approval scopes clients, rejects stale revisions and preserves history", async () => {
+  const at = new Date().toISOString(),
+    month = new Date(Date.now() - 3 * 3600000).toISOString().slice(0, 7);
+  const data = {
+    client_id: clientA,
+    title: "Conteúdo de teste",
+    caption: "Legenda original",
+    channel: "Instagram",
+    scheduled_at: at,
+    asset_url: "https://example.com/material",
+  };
+  assert.equal((await request("/editorial")).status, 401);
+  assert.equal(
+    (
+      await request("/editorial", {
+        method: "POST",
+        cookie: clientCookie,
+        data,
+      })
+    ).status,
+    403,
+  );
+  assert.equal(
+    (
+      await request("/editorial", {
+        method: "POST",
+        cookie: adminCookie,
+        data: { ...data, asset_url: "javascript:alert(1)" },
+      })
+    ).status,
+    400,
+  );
+  const id = (
+    await request("/editorial", { method: "POST", cookie: teamCookie, data })
+  ).body.id;
+  const own = async () =>
+    (
+      await request("/editorial?month=" + month, { cookie: adminCookie })
+    ).body.posts.find((p) => p.id === id);
+  assert.equal(
+    (
+      await request("/editorial?month=" + month, { cookie: clientCookie })
+    ).body.posts.some((p) => p.id === id),
+    false,
+  );
+  assert.equal(
+    (await request("/editorial/" + id + "/history", { cookie: clientCookie }))
+      .status,
+    404,
+  );
+  assert.equal(
+    (
+      await request("/editorial/" + id, {
+        method: "PUT",
+        cookie: adminCookie,
+        data: { version: 1, transition: "published" },
+      })
+    ).status,
+    409,
+  );
+  assert.equal(
+    (
+      await request("/editorial/" + id, {
+        method: "PUT",
+        cookie: teamCookie,
+        data: { version: 1, transition: "review" },
+      })
+    ).status,
+    200,
+  );
+  const other = (
+    await request("/editorial", {
+      method: "POST",
+      cookie: adminCookie,
+      data: { ...data, client_id: clientB, title: "Outro cliente" },
+    })
+  ).body.id;
+  await request("/editorial/" + other, {
+    method: "PUT",
+    cookie: adminCookie,
+    data: { version: 1, transition: "review" },
+  });
+  assert.equal(
+    (
+      await request("/editorial/" + other + "/approval", {
+        method: "POST",
+        cookie: clientCookie,
+        data: { version: 2, decision: "approved" },
+      })
+    ).status,
+    404,
+  );
+  assert.equal(
+    (
+      await request("/editorial/" + id + "/approval", {
+        method: "POST",
+        cookie: teamCookie,
+        data: { version: 2, decision: "approved" },
+      })
+    ).status,
+    403,
+  );
+  assert.equal(
+    (
+      await request("/editorial/" + id + "/approval", {
+        method: "POST",
+        cookie: clientCookie,
+        data: { version: 2, decision: "changes", comment: "" },
+      })
+    ).status,
+    400,
+  );
+  assert.equal(
+    (
+      await request("/editorial/" + id + "/approval", {
+        method: "POST",
+        cookie: clientCookie,
+        data: { version: 2, decision: "changes", comment: "Alterar legenda" },
+      })
+    ).status,
+    200,
+  );
+  assert.equal((await own()).status, "changes");
+  assert.equal(
+    (
+      await request("/editorial/" + id, {
+        method: "PUT",
+        cookie: adminCookie,
+        data: { ...data, version: 2 },
+      })
+    ).status,
+    409,
+  );
+  await request("/editorial/" + id, {
+    method: "PUT",
+    cookie: adminCookie,
+    data: { ...data, caption: "Legenda corrigida", version: 3 },
+  });
+  await request("/editorial/" + id, {
+    method: "PUT",
+    cookie: adminCookie,
+    data: { version: 4, transition: "review" },
+  });
+  const decisions = await Promise.all([
+    request("/editorial/" + id + "/approval", {
+      method: "POST",
+      cookie: clientCookie,
+      data: { version: 5, decision: "approved", comment: "Pode seguir" },
+    }),
+    request("/editorial/" + id + "/approval", {
+      method: "POST",
+      cookie: clientCookie,
+      data: { version: 5, decision: "approved", comment: "Duplicada" },
+    }),
+  ]);
+  assert.deepEqual(decisions.map((r) => r.status).sort(), [200, 409]);
+  assert.equal(
+    (await request("/editorial/" + id + "/history", { cookie: clientCookie }))
+      .body.reviews.length,
+    2,
+  );
+  assert.equal(
+    (
+      await request("/editorial/" + id, {
+        method: "PUT",
+        cookie: teamCookie,
+        data: { version: 6, transition: "published" },
+      })
+    ).status,
+    200,
+  );
+  assert.equal((await own()).status, "published");
+  await request("/editorial/" + id, {
+    method: "PUT",
+    cookie: adminCookie,
+    data: { ...data, caption: "Novo conteúdo exige revisão", version: 7 },
+  });
+  assert.equal((await own()).status, "draft");
+  assert.equal(
+    (
+      await request("/editorial/" + id, {
+        method: "DELETE",
+        cookie: adminCookie,
+        data: { version: 8 },
+      })
+    ).status,
+    200,
+  );
+  const backup = (await request("/export", { cookie: adminCookie })).body;
+  assert.equal(backup.editorial.find((p) => p.id === id).archived, 1);
+  assert.equal(
+    backup.editorial_reviews.filter((r) => r.editorial_id === id).length,
+    2,
+  );
+  await request("/editorial/" + other, {
+    method: "DELETE",
+    cookie: adminCookie,
+    data: { version: 2 },
+  });
+});
+
 test("portfolio drafts, images, publishing and archive enforce access boundaries", async () => {
   assert.equal((await request("/admin/portfolio")).status, 401);
   for (const cookie of [teamCookie, clientCookie])
@@ -1281,6 +1662,165 @@ test("browser: marketing motion respects reduced motion and keyboard focus", asy
       ),
       true,
     );
+  } finally {
+    await browser.close();
+  }
+});
+test("browser: public booking, staff confirmation and client editorial approval", async () => {
+  const { chromium } = await import("@playwright/test");
+  const browser = await chromium.launch({ headless: true });
+  try {
+    const context = await browser.newContext({
+      viewport: { width: 1440, height: 1000 },
+    });
+    const [name, value] = adminCookie.split("=");
+    await context.addCookies([{ name, value, url: base }]);
+    const page = await context.newPage();
+    const errors = [];
+    page.on("pageerror", (e) => errors.push(e.message));
+    await page.goto(base + "/portal");
+    await page
+      .getByRole("button", { name: "Agenda de reuniões", exact: true })
+      .click();
+    const future = new Date(Date.now() + 10 * 86400000);
+    future.setUTCHours(16, 0, 0, 0);
+    const localTime = new Date(+future - 3 * 3600000)
+      .toISOString()
+      .slice(0, 16);
+    await page.getByLabel("Data e hora de início").fill(localTime);
+    await page
+      .getByRole("button", { name: "Adicionar horário", exact: true })
+      .click();
+    await page
+      .getByRole("button", { name: "Retirar horário", exact: true })
+      .waitFor();
+    const publicPage = await browser.newPage({
+      viewport: { width: 390, height: 844 },
+    });
+    await publicPage.goto(base + "/#agendar");
+    await publicPage.getByLabel("Horário disponível").waitFor();
+    await publicPage
+      .getByLabel("Seu nome", { exact: true })
+      .fill("Reunião pelo navegador");
+    await publicPage
+      .getByLabel("Seu e-mail", { exact: true })
+      .fill("meeting-browser@example.invalid");
+    await publicPage
+      .getByLabel("Sobre a conversa")
+      .fill("Briefing para novo projeto");
+    await publicPage
+      .getByLabel("Autorizo o uso destes dados para tratar do agendamento.")
+      .check();
+    await publicPage
+      .getByRole("button", { name: "Solicitar reunião", exact: true })
+      .click();
+    await publicPage
+      .getByText("Solicitação recebida!", { exact: false })
+      .waitFor();
+    assert.equal(
+      await publicPage.evaluate(
+        () => document.documentElement.scrollWidth <= innerWidth,
+      ),
+      true,
+    );
+    await page.reload();
+    await page
+      .getByRole("button", { name: "Agenda de reuniões", exact: true })
+      .click();
+    const meeting = page
+      .locator("article")
+      .filter({ hasText: "Reunião pelo navegador" });
+    await meeting
+      .getByRole("button", { name: "Confirmar reunião", exact: true })
+      .click();
+    await meeting.getByText("Confirmada", { exact: true }).waitFor();
+    await page.screenshot({
+      path: "test-results/meetings-desktop.png",
+      fullPage: true,
+    });
+    await page
+      .getByRole("button", { name: "Calendário editorial", exact: true })
+      .click();
+    await page
+      .getByRole("button", { name: "Novo conteúdo", exact: true })
+      .click();
+    await page.getByLabel("Cliente do conteúdo").selectOption(clientA);
+    await page
+      .getByLabel("Título do conteúdo")
+      .fill("Ilustre · aprovação editorial");
+    const date = new Date(Date.now() - 3 * 3600000).toISOString().slice(0, 16);
+    await page.getByLabel("Data e hora planejada").fill(date);
+    await page
+      .getByLabel("Legenda", { exact: true })
+      .fill("Uma ideia aprovada pelo cliente.");
+    await page
+      .getByRole("button", { name: "Salvar rascunho", exact: true })
+      .click();
+    await page.getByRole("dialog").waitFor({ state: "hidden" });
+    const card = page
+      .locator("article")
+      .filter({ hasText: "Ilustre · aprovação editorial" });
+    await card
+      .getByRole("button", { name: "Enviar para aprovação", exact: true })
+      .click();
+    await card.getByText("Em aprovação", { exact: true }).waitFor();
+    const login = await request("/login", {
+      method: "POST",
+      data: { email: "client@example.invalid", password: "Alter12!" },
+    });
+    assert.equal(login.status, 200);
+    const cc = await browser.newContext({
+      viewport: { width: 390, height: 844 },
+    });
+    const [cn, cv] = login.cookie.split("=");
+    await cc.addCookies([{ name: cn, value: cv, url: base }]);
+    const cp = await cc.newPage();
+    await cp.goto(base + "/portal");
+    await cp
+      .getByRole("button", { name: "Alternar navegação", exact: true })
+      .click();
+    await cp
+      .getByRole("button", { name: "Calendário editorial", exact: true })
+      .click();
+    await cp
+      .getByRole("heading", {
+        name: "Ilustre · aprovação editorial",
+        exact: true,
+      })
+      .waitFor();
+    await cp
+      .getByRole("button", { name: "Revisar conteúdo", exact: true })
+      .click();
+    await cp
+      .getByLabel("Comentário da revisão")
+      .fill("Aprovado pelo navegador");
+    await cp
+      .getByRole("button", { name: "Enviar revisão", exact: true })
+      .click();
+    await cp.getByRole("dialog").waitFor({ state: "hidden" });
+    await cp.getByText("Aprovado", { exact: true }).waitFor();
+    assert.equal(
+      await cp.evaluate(
+        () => document.documentElement.scrollWidth <= innerWidth,
+      ),
+      true,
+    );
+    await cp.screenshot({
+      path: "test-results/editorial-client-mobile.png",
+      fullPage: true,
+    });
+    await page
+      .getByRole("button", { name: "Mostrar todos / atualizar", exact: true })
+      .click();
+    await card
+      .getByRole("button", { name: "Marcar publicado", exact: true })
+      .click();
+    await card.getByText("Publicado manualmente", { exact: true }).waitFor();
+    await page.screenshot({
+      path: "test-results/editorial-desktop.png",
+      fullPage: true,
+    });
+    assert.deepEqual(errors, []);
   } finally {
     await browser.close();
   }

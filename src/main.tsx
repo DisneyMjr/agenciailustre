@@ -1,3 +1,4 @@
+import { Meetings, Editorial, PublicBooking } from "./planning";
 import { useAgencyMotion } from "./agency-motion";
 import {
   AgencyHero,
@@ -250,6 +251,9 @@ function Website() {
           <a href="#trabalhos" onClick={() => setMenu(false)}>
             Trabalhos
           </a>
+          <a href="#agendar" onClick={() => setMenu(false)}>
+            Agendar
+          </a>
           <a href="#processo" onClick={() => setMenu(false)}>
             Nosso jeito
           </a>
@@ -285,6 +289,7 @@ function Website() {
         <PortfolioGallery request={api} />
         <AgencyCTA />
         <AgencyProcess />
+        <PublicBooking />
         <section className="portal-promo">
           <div className="wrap portal-promo-inner">
             <div>
@@ -672,7 +677,14 @@ function Login({ onLogin }: { onLogin: (u: User) => void }) {
 }
 function Dashboard({ user, onLogout }: { user: User; onLogout: () => void }) {
   const [active, setActive] = useState<
-    Kind | "overview" | "settings" | "reports" | "integrations" | "portfolio"
+    | Kind
+    | "overview"
+    | "settings"
+    | "reports"
+    | "integrations"
+    | "portfolio"
+    | "meetings"
+    | "editorial"
   >("overview");
   const [createKind, setCreateKind] = useState<Kind | null>(null);
   const [mobile, setMobile] = useState(false);
@@ -725,6 +737,26 @@ function Dashboard({ user, onLogout }: { user: User; onLogout: () => void }) {
         <Brand light />
         <p className="sidebar-caption">ESPAÇO DE TRABALHO</p>
         <nav aria-label="Gestão">
+          <button
+            className={active === "meetings" ? "active" : ""}
+            onClick={() => {
+              setActive("meetings");
+              setMobile(false);
+            }}
+          >
+            <CalendarDays size={18} />
+            Agenda de reuniões
+          </button>
+          <button
+            className={active === "editorial" ? "active" : ""}
+            onClick={() => {
+              setActive("editorial");
+              setMobile(false);
+            }}
+          >
+            <Palette size={18} />
+            Calendário editorial
+          </button>
           {user.role === "admin" && (
             <button
               className={active === "portfolio" ? "active" : ""}
@@ -858,6 +890,10 @@ function Dashboard({ user, onLogout }: { user: User; onLogout: () => void }) {
                 setActive(kind);
               }}
             />
+          ) : active === "meetings" ? (
+            <Meetings user={user} />
+          ) : active === "editorial" ? (
+            <Editorial user={user} />
           ) : active === "portfolio" ? (
             <PortfolioManager request={api} />
           ) : active === "reports" ? (
