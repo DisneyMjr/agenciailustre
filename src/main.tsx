@@ -10,7 +10,7 @@ import {
 } from "./agency-sections";
 import { PortfolioGallery, PortfolioManager } from "./portfolio";
 import { IlustreMark } from "./brand-mark";
-import React, { useState, useEffect, FormEvent } from "react";
+import React, { useState, useEffect, FormEvent, lazy, Suspense } from "react";
 import { createRoot } from "react-dom/client";
 import {
   ArrowUpRight,
@@ -675,6 +675,7 @@ function Login({ onLogin }: { onLogin: (u: User) => void }) {
     </main>
   );
 }
+const Documents = lazy(() => import("./documents"));
 function Dashboard({ user, onLogout }: { user: User; onLogout: () => void }) {
   const [active, setActive] = useState<
     | Kind
@@ -685,6 +686,7 @@ function Dashboard({ user, onLogout }: { user: User; onLogout: () => void }) {
     | "portfolio"
     | "meetings"
     | "editorial"
+    | "documents"
   >("overview");
   const [createKind, setCreateKind] = useState<Kind | null>(null);
   const [mobile, setMobile] = useState(false);
@@ -737,6 +739,16 @@ function Dashboard({ user, onLogout }: { user: User; onLogout: () => void }) {
         <Brand light />
         <p className="sidebar-caption">ESPAÇO DE TRABALHO</p>
         <nav aria-label="Gestão">
+          <button
+            className={active === "documents" ? "active" : ""}
+            onClick={() => {
+              setActive("documents");
+              setMobile(false);
+            }}
+          >
+            <FolderOpen size={18} />
+            Documentos & assinaturas
+          </button>
           <button
             className={active === "meetings" ? "active" : ""}
             onClick={() => {
@@ -890,6 +902,10 @@ function Dashboard({ user, onLogout }: { user: User; onLogout: () => void }) {
                 setActive(kind);
               }}
             />
+          ) : active === "documents" ? (
+            <Suspense fallback={<p role="status">Carregando documentos…</p>}>
+              <Documents user={user} />
+            </Suspense>
           ) : active === "meetings" ? (
             <Meetings user={user} />
           ) : active === "editorial" ? (

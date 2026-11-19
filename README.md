@@ -116,3 +116,33 @@ Após aprovação, publique pelos canais habituais e use **Marcar publicado** pa
 Todas as datas seguem Brasília (UTC−3). O editorial lista 50 conteúdos por página e o calendário destaca apenas a página atual; use a paginação para consultar os demais. A agenda pública mostra até 100 horários livres futuros e o painel até 200 disponibilidades futuras, além da lista paginada de reuniões.
 
 A migração `0004_planning.sql` é aditiva. A exportação administrativa e o backup D1 incluem os registros desses módulos. Não há serviços, contas externas ou segredos adicionais necessários. Continuam aplicáveis as cotas gratuitas da Cloudflare. Contratos/assinatura e atendimento por IA ficam para etapas futuras.
+
+
+## Documentos e assinatura eletrônica
+
+Módulo próprio inspirado no fluxo de documentos do Documenso, com um destinatário por PDF. **Não é uma instalação do Documenso nem assinatura certificada ICP-Brasil/PAdES.** O registro comprova a confirmação pela conta e senha do portal, com nome declarado, identidade da conta, data do servidor, consentimento e SHA-256 do PDF original. A adequação da forma de assinatura ao documento e a representação do cliente precisam ser avaliadas pela agência; o módulo não verifica identidade civil ou poderes de representação.
+
+### Preparar e enviar
+
+1. Cadastre o cliente e um acesso individual de cliente vinculado em **Meu acesso**. O destinatário precisa estar ativo.
+2. Abra **Documentos & assinaturas → Novo documento**, informe título, selecione o acesso do destinatário e envie um PDF sem senha, de até **1,5 MB e 20 páginas**. O seletor lista até 500 acessos ativos.
+3. Salve e confira o arquivo. Rascunhos ficam privados da equipe e podem ser editados.
+4. Clique **Enviar ao cliente** e confirme o destinatário. O PDF e seus dados ficam bloqueados para edição. Avise o cliente pelos canais habituais; não há envio automático de e-mail ou link anônimo de assinatura.
+
+### Assinar e guardar
+
+O destinatário entra em sua própria conta, abre o PDF, confere todas as páginas e escolhe assinatura digitada ou desenhada. A conclusão exige nome, consentimento explícito e nova confirmação da senha. A senha não integra o comprovante. Outro acesso do mesmo cliente não pode assinar no lugar do destinatário escolhido. A imagem manuscrita é uma representação visual, não uma verificação biométrica.
+
+Após concluir, equipe e destinatário podem baixar **PDF com comprovante** e **registro JSON**. A cópia PDF contém as páginas visualmente renderizadas e uma página de comprovante (ou mais, se necessário), com assinatura, identificação da conta, data, consentimento e hashes. Inclui o PDF original e o JSON como anexos. A cópia é estática: campos de formulário, links interativos e outras funções do original não são preservados visualmente. O original permanece preservado em seus bytes exatos, inclusive se já possuir assinaturas externas; a cópia visual não mantém uma eventual certificação digital do original. Não substitua o arquivo original pela cópia para validar certificados preexistentes.
+
+**Conferir integridade** compara o original, o manifesto e o desenho com os registros atuais do servidor. O SHA-256 não é um selo criptográfico de entidade independente; não há certificado de assinatura, carimbo de tempo confiável externo ou validação pública no ITI. A data é registrada pelo servidor. O sistema guarda o hash do IP (não o IP bruto) e o identificador do navegador no manifesto. O visualizador é local ao navegador e não executa ações do PDF.
+
+A equipe pode cancelar um envio pendente, e o destinatário pode recusar com motivo. Documentos assinados não podem ser alterados ou cancelados. Arquivar preserva arquivos, assinatura e histórico; o destinatário mantém acesso aos seus documentos assinados. As listas são paginadas em 50 itens. O histórico de visualização registra uma ocorrência por acesso e versão, sem duplicar cada abertura.
+
+### Integridade e operação
+
+A migração `0005_documents.sql` é aditiva. Triggers bloqueiam alterações de conteúdo depois do envio, alteração de assinaturas, exclusão de documentos e alteração/exclusão de eventos. A confirmação usa condições de versão e um lote D1 atômico para evitar assinaturas duplicadas ou concorrência com cancelamento. Reautenticações de assinatura são limitadas a 12 tentativas por conta a cada 15 minutos.
+
+Arquivos ficam no D1 existente; não é necessário ativar R2, SMTP, certificado ou serviço pago para esta modalidade. Aplicam-se as cotas de armazenamento, leitura, gravação e requisições da conta gratuita. Bibliotecas PDF são carregadas apenas quando necessárias. A exportação administrativa contém metadados, eventos e manifestos; **não inclui os arquivos PDF nem desenhos**. Para cópia completa, use o backup D1 protegido fora do repositório. Os PDFs e registros JSON baixados pelo cliente também contêm informações pessoais e precisam ser guardados com cuidado.
+
+Para assinatura certificada ou equivalência a outros recursos do Documenso (campos posicionáveis, vários signatários, convites por e-mail, selo PAdES), será necessária outra etapa com infraestrutura e configurações específicas. Nada disso foi ativado ou contratado.

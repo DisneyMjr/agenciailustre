@@ -266,6 +266,359 @@ test("admin can create scoped client and team accounts", async () => {
   }
 });
 
+async function documentFixture(title = "Proposta de teste") {
+  const { PDFDocument, StandardFonts } = await import("pdf-lib");
+  const pdf = await PDFDocument.create();
+  const font = await pdf.embedFont(StandardFonts.Helvetica);
+  pdf.addPage([595, 842]).drawText(title, { x: 50, y: 750, size: 22, font });
+  return Buffer.from(await pdf.save()).toString("base64");
+}
+test("documents lock sent PDFs and enforce recipient-only password-confirmed signatures", async () => {
+  const signer = (await request("/me", { cookie: clientCookie })).body.user;
+  const data = {
+    title: "Proposta confidencial",
+    client_id: clientA,
+    recipient_id: signer.id,
+    pdf: await documentFixture(),
+  };
+  assert.equal((await request("/documents")).status, 401);
+  assert.equal(
+    (await request("/documents/recipients", { cookie: clientCookie })).status,
+    403,
+  );
+  assert.equal(
+    (
+      await request("/documents", {
+        method: "POST",
+        cookie: clientCookie,
+        data,
+      })
+    ).status,
+    403,
+  );
+  assert.equal(
+    (
+      await request("/documents", {
+        method: "POST",
+        cookie: adminCookie,
+        data: { ...data, client_id: clientB },
+      })
+    ).status,
+    400,
+  );
+  assert.equal(
+    (
+      await request("/documents", {
+        method: "POST",
+        cookie: adminCookie,
+        data: { ...data, pdf: btoa("<script>bad</script>") },
+      })
+    ).status,
+    400,
+  );
+  const created = await request("/documents", {
+    method: "POST",
+    cookie: adminCookie,
+    data,
+  });
+  assert.equal(created.status, 201);
+  const id = created.body.id;
+  assert.equal(
+    (await request("/documents/" + id, { cookie: clientCookie })).status,
+    404,
+  );
+  assert.equal(
+    (await request("/documents/" + id + "/pdf", { cookie: clientCookie }))
+      .status,
+    404,
+  );
+  assert.equal(
+    (
+      await request("/documents/" + id, {
+        method: "PUT",
+        cookie: teamCookie,
+        data: { ...data, title: "Proposta revisada", version: 1 },
+      })
+    ).status,
+    200,
+  );
+  assert.equal(
+    (
+      await request("/documents/" + id + "/send", {
+        method: "POST",
+        cookie: adminCookie,
+        data: { version: 1 },
+      })
+    ).status,
+    409,
+  );
+  assert.equal(
+    (
+      await request("/documents/" + id + "/send", {
+        method: "POST",
+        cookie: adminCookie,
+        data: { version: 2 },
+      })
+    ).status,
+    200,
+  );
+  const detail = (await request("/documents/" + id, { cookie: clientCookie }))
+    .body;
+  assert.equal(detail.document.version, 3);
+  assert.equal(detail.document.status, "sent");
+  assert.equal(
+    (
+      await request("/documents/" + id, {
+        method: "PUT",
+        cookie: adminCookie,
+        data: { ...data, version: 3 },
+      })
+    ).status,
+    409,
+  );
+  const sign = {
+    version: 3,
+    document_sha256: detail.document.pdf_sha256,
+    name: "Cliente de teste",
+    password: fixturePassword,
+    consent: true,
+    method: "typed",
+  };
+  assert.equal(
+    (
+      await request("/documents/" + id + "/sign", {
+        method: "POST",
+        cookie: adminCookie,
+        data: sign,
+      })
+    ).status,
+    403,
+  );
+  assert.equal(
+    (
+      await request("/documents/" + id + "/sign", {
+        method: "POST",
+        cookie: clientCookie,
+        data: sign,
+      })
+    ).status,
+    400,
+  );
+  assert.equal(
+    (
+      await request("/documents/" + id + "/view", {
+        method: "POST",
+        cookie: clientCookie,
+        data: sign,
+      })
+    ).status,
+    200,
+  );
+  assert.equal(
+    (
+      await request("/documents/" + id + "/sign", {
+        method: "POST",
+        cookie: clientCookie,
+        data: { ...sign, consent: false },
+      })
+    ).status,
+    400,
+  );
+  assert.equal(
+    (
+      await request("/documents/" + id + "/sign", {
+        method: "POST",
+        cookie: clientCookie,
+        data: { ...sign, password: "incorrect!" },
+      })
+    ).status,
+    403,
+  );
+  assert.equal(
+    (
+      await request("/documents/" + id + "/sign", {
+        method: "POST",
+        cookie: clientCookie,
+        data: { ...sign, document_sha256: "0".repeat(64) },
+      })
+    ).status,
+    409,
+  );
+  const decisions = await Promise.all([
+    request("/documents/" + id + "/sign", {
+      method: "POST",
+      cookie: clientCookie,
+      data: sign,
+    }),
+    request("/documents/" + id + "/sign", {
+      method: "POST",
+      cookie: clientCookie,
+      data: sign,
+    }),
+  ]);
+  assert.deepEqual(decisions.map((r) => r.status).sort(), [200, 409]);
+  const evidence = (
+    await request("/documents/" + id + "/evidence", { cookie: clientCookie })
+  ).body;
+  const { createHash } = await import("node:crypto");
+  assert.equal(
+    createHash("sha256")
+      .update(Buffer.from(evidence.pdf, "base64"))
+      .digest("hex"),
+    evidence.document.pdf_sha256,
+  );
+  assert.equal(
+    createHash("sha256").update(evidence.manifest_json).digest("hex"),
+    evidence.manifest_sha256,
+  );
+  assert.equal(evidence.manifest.signer_id, signer.id);
+  assert.equal(evidence.manifest.authentication, "portal_password");
+  assert.equal(JSON.stringify(evidence).includes(fixturePassword), false);
+  assert.equal(evidence.events.filter((e) => e.action === "signed").length, 1);
+  assert.equal(
+    (await request("/documents/" + id + "/verify", { cookie: clientCookie }))
+      .body.valid,
+    true,
+  );
+  assert.equal(
+    (
+      await request("/documents/" + id + "/void", {
+        method: "POST",
+        cookie: adminCookie,
+        data: { version: 4, reason: "Tentativa de alterar assinatura" },
+      })
+    ).status,
+    409,
+  );
+  assert.equal(
+    (
+      await request("/documents/" + id, {
+        method: "DELETE",
+        cookie: adminCookie,
+        data: { version: 4 },
+      })
+    ).status,
+    200,
+  );
+  assert.equal(
+    (await request("/documents", { cookie: clientCookie })).body.documents.some(
+      (d) => d.id === id,
+    ),
+    true,
+  );
+  const backup = (await request("/export", { cookie: adminCookie })).body;
+  assert.equal(backup.documents.find((d) => d.id === id).archived, 1);
+  assert.equal(
+    backup.document_signatures.filter((d) => d.document_id === id).length,
+    1,
+  );
+  assert.equal(backup.document_files_included, false);
+});
+test("documents distinguish different people at one client and retain refusals", async () => {
+  const signer = (await request("/me", { cookie: clientCookie })).body.user;
+  const createdUser = await request("/users", {
+    method: "POST",
+    cookie: adminCookie,
+    data: {
+      name: "Outro assinante",
+      email: "second-signer@example.invalid",
+      password: fixturePassword,
+      role: "client",
+      client_id: clientA,
+    },
+  });
+  assert.equal(createdUser.status, 201);
+  const login = await request("/login", {
+    method: "POST",
+    data: { email: "second-signer@example.invalid", password: fixturePassword },
+  });
+  assert.equal(login.status, 200);
+  const data = {
+    title: "Documento de destinatário específico",
+    client_id: clientA,
+    recipient_id: signer.id,
+    pdf: await documentFixture("Documento para recusa"),
+  };
+  const id = (
+    await request("/documents", { method: "POST", cookie: teamCookie, data })
+  ).body.id;
+  await request("/documents/" + id + "/send", {
+    method: "POST",
+    cookie: teamCookie,
+    data: { version: 1 },
+  });
+  assert.equal(
+    (await request("/documents/" + id, { cookie: login.cookie })).status,
+    404,
+  );
+  assert.equal(
+    (await request("/documents/" + id + "/evidence", { cookie: login.cookie }))
+      .status,
+    404,
+  );
+  assert.equal(
+    (
+      await request("/documents/" + id + "/decline", {
+        method: "POST",
+        cookie: login.cookie,
+        data: { version: 2, reason: "Não é meu" },
+      })
+    ).status,
+    404,
+  );
+  assert.equal(
+    (
+      await request("/documents/" + id + "/decline", {
+        method: "POST",
+        cookie: clientCookie,
+        data: { version: 2, reason: "Preciso rever os valores" },
+      })
+    ).status,
+    200,
+  );
+  assert.equal(
+    (await request("/documents/" + id + "/verify", { cookie: clientCookie }))
+      .body.valid,
+    false,
+  );
+  assert.equal(
+    (await request("/documents/" + id + "/evidence", { cookie: clientCookie }))
+      .status,
+    409,
+  );
+  assert.equal(
+    (
+      await request("/documents/" + id, { cookie: clientCookie })
+    ).body.events.some(
+      (e) => e.action === "declined" && e.detail.includes("valores"),
+    ),
+    true,
+  );
+  const other = (
+    await request("/documents", { method: "POST", cookie: adminCookie, data })
+  ).body.id;
+  await request("/documents/" + other + "/send", {
+    method: "POST",
+    cookie: adminCookie,
+    data: { version: 1 },
+  });
+  await request("/documents/" + other + "/void", {
+    method: "POST",
+    cookie: adminCookie,
+    data: { version: 2, reason: "Proposta substituída" },
+  });
+  assert.equal(
+    (
+      await request("/documents/" + other + "/sign", {
+        method: "POST",
+        cookie: clientCookie,
+        data: { version: 2 },
+      })
+    ).status,
+    409,
+  );
+});
+
 test("meeting scheduling prevents conflicts and exposes no visitor details", async () => {
   const start = new Date(Date.now() + 7 * 86400000);
   start.setUTCHours(15, 0, 0, 0);
@@ -1820,6 +2173,180 @@ test("browser: public booking, staff confirmation and client editorial approval"
       path: "test-results/editorial-desktop.png",
       fullPage: true,
     });
+    assert.deepEqual(errors, []);
+  } finally {
+    await browser.close();
+  }
+});
+test("browser: upload PDF, draw signature and download a readable receipt", async () => {
+  const { chromium } = await import("@playwright/test");
+  const { PDFDocument, PDFName, PDFDict } = await import("pdf-lib");
+  const { readFile } = await import("node:fs/promises");
+  const browser = await chromium.launch({ headless: true });
+  try {
+    const ac = await browser.newContext({
+        viewport: { width: 1440, height: 1000 },
+      }),
+      [an, av] = adminCookie.split("=");
+    await ac.addCookies([{ name: an, value: av, url: base }]);
+    const ap = await ac.newPage(),
+      errors = [];
+    ap.on("pageerror", (e) => errors.push(e.message));
+    await ap.goto(base + "/portal");
+    await ap
+      .getByRole("button", { name: "Documentos & assinaturas", exact: true })
+      .click();
+    const recipients = (
+        await request("/documents/recipients", { cookie: adminCookie })
+      ).body.recipients,
+      recipient = recipients.find((r) => r.email === "client@example.invalid");
+    await ap
+      .getByRole("button", { name: "Novo documento", exact: true })
+      .click();
+    await ap
+      .getByLabel("Título do documento")
+      .fill("Contrato · assinatura pelo navegador");
+    await ap
+      .getByLabel("Destinatário da assinatura")
+      .selectOption(recipient.id);
+    await ap.getByLabel("Arquivo PDF").setInputFiles({
+      name: "contrato-fixture.pdf",
+      mimeType: "application/pdf",
+      buffer: Buffer.from(
+        await documentFixture("Contrato - teste de assinatura"),
+        "base64",
+      ),
+    });
+    await ap
+      .getByRole("button", { name: "Salvar documento", exact: true })
+      .click();
+    await ap.getByRole("dialog").waitFor({ state: "hidden" });
+    const card = ap
+      .locator("article")
+      .filter({ hasText: "Contrato · assinatura pelo navegador" });
+    await card
+      .getByRole("button", { name: "Enviar ao cliente", exact: true })
+      .click();
+    await ap
+      .getByRole("dialog")
+      .getByRole("button", { name: "Confirmar", exact: true })
+      .click();
+    await ap.getByRole("dialog").waitFor({ state: "hidden" });
+    await card.getByText("Aguardando assinatura", { exact: true }).waitFor();
+    const login = await request("/login", {
+      method: "POST",
+      data: { email: "client@example.invalid", password: "Alter12!" },
+    });
+    assert.equal(login.status, 200);
+    const cc = await browser.newContext({
+        viewport: { width: 390, height: 844 },
+      }),
+      [cn, cv] = login.cookie.split("=");
+    await cc.addCookies([{ name: cn, value: cv, url: base }]);
+    const cp = await cc.newPage();
+    cp.on("pageerror", (e) => errors.push(e.message));
+    await cp.goto(base + "/portal");
+    await cp
+      .getByRole("button", { name: "Alternar navegação", exact: true })
+      .click();
+    await cp
+      .getByRole("button", { name: "Documentos & assinaturas", exact: true })
+      .click();
+    await cp
+      .getByRole("button", { name: "Ler e assinar", exact: true })
+      .click();
+    await cp
+      .getByRole("button", { name: "Preparar assinatura", exact: true })
+      .click();
+    await cp
+      .getByRole("button", { name: "Desenhar assinatura", exact: true })
+      .click();
+    const canvas = cp.locator(".document-drawing canvas");
+    await canvas.scrollIntoViewIfNeeded();
+    const box = await canvas.boundingBox();
+    await cp.mouse.move(box.x + 30, box.y + 90);
+    await cp.mouse.down();
+    await cp.mouse.move(box.x + 60, box.y + 30, { steps: 5 });
+    await cp.mouse.move(box.x + 100, box.y + 95, { steps: 5 });
+    await cp.mouse.move(box.x + 180, box.y + 50, { steps: 5 });
+    await cp.mouse.up();
+    await cp
+      .getByLabel("Nome completo para assinar")
+      .fill("Cliente de teste UTV");
+    await cp.getByLabel("Confirme sua senha do portal").fill("Alter12!");
+    await cp.getByRole("checkbox").check();
+    await cp
+      .getByRole("button", { name: "Assinar documento", exact: true })
+      .click();
+    await cp
+      .getByRole("heading", { name: "Assinatura concluída", exact: true })
+      .waitFor();
+    const [download] = await Promise.all([
+      cp.waitForEvent("download"),
+      cp
+        .getByRole("button", {
+          name: "Baixar PDF com comprovante",
+          exact: true,
+        })
+        .click(),
+    ]);
+    await download.saveAs("test-results/document-signed.pdf");
+    const bytes = await readFile("test-results/document-signed.pdf"),
+      pdf = await PDFDocument.load(bytes);
+    assert.ok(pdf.getPageCount() >= 2);
+    const names = pdf.catalog.lookup(PDFName.of("Names"), PDFDict);
+    assert.ok(names.has(PDFName.of("EmbeddedFiles")));
+    await cp
+      .getByRole("button", { name: "Conferir integridade", exact: true })
+      .click();
+    await cp
+      .getByText("Integridade conferida com os registros atuais do servidor.", {
+        exact: true,
+      })
+      .waitFor();
+    assert.equal(
+      await cp.evaluate(
+        () => document.documentElement.scrollWidth <= innerWidth,
+      ),
+      true,
+    );
+    await cp
+      .getByRole("dialog")
+      .screenshot({ path: "test-results/document-signed-mobile.png" });
+    // Reopen the generated PDF through the app renderer to inspect the receipt visually.
+    await ap
+      .getByRole("button", { name: "Novo documento", exact: true })
+      .click();
+    await ap
+      .getByLabel("Título do documento")
+      .fill("Cópia de conferência do comprovante");
+    await ap
+      .getByLabel("Destinatário da assinatura")
+      .selectOption(recipient.id);
+    await ap.getByLabel("Arquivo PDF").setInputFiles({
+      name: "comprovante-fixture.pdf",
+      mimeType: "application/pdf",
+      buffer: bytes,
+    });
+    await ap
+      .getByRole("button", { name: "Salvar documento", exact: true })
+      .click();
+    await ap.getByRole("dialog").waitFor({ state: "hidden" });
+    await ap
+      .locator("article")
+      .filter({ hasText: "Cópia de conferência do comprovante" })
+      .getByRole("button", { name: "Abrir documento", exact: true })
+      .click();
+    await ap
+      .getByRole("button", { name: "Próxima página", exact: true })
+      .click();
+    await ap.getByText("Página 2 de 2", { exact: true }).waitFor();
+    await ap
+      .getByText("Carregando página…", { exact: true })
+      .waitFor({ state: "hidden" });
+    await ap
+      .locator(".document-preview canvas")
+      .screenshot({ path: "test-results/document-receipt-render.png" });
     assert.deepEqual(errors, []);
   } finally {
     await browser.close();

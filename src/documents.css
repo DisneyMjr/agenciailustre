@@ -1,0 +1,166 @@
+.document-dialog {
+  max-width: 980px;
+  width: calc(100vw - 40px);
+  padding: 32px;
+}
+.document-dialog > h2 {
+  margin-bottom: 24px;
+  overflow-wrap: anywhere;
+}
+.document-dialog > p {
+  line-height: 1.7;
+  margin: 18px 0;
+}
+.document-disclosure {
+  padding: 18px 22px;
+  border: 1px solid #d9c6e8;
+  background: #f1e9f9;
+  border-radius: 12px;
+  color: #634476;
+  font-size: 14px;
+  line-height: 1.7;
+  margin-bottom: 24px;
+}
+.document-summary {
+  padding: 18px;
+  background: #f3edf9;
+  border-radius: 12px;
+  margin: 18px 0;
+  line-height: 1.7;
+  font-size: 14px;
+}
+.document-hash {
+  font:
+    12px/1.7 ui-monospace,
+    monospace;
+  overflow-wrap: anywhere;
+  color: #776184;
+}
+.document-page-controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin: 20px 0;
+  font-size: 14px;
+  flex-wrap: wrap;
+}
+.document-page-controls .button {
+  font-size: 14px;
+  padding: 10px 15px;
+}
+.document-preview {
+  background: #e9e2ef;
+  padding: 18px;
+  border: 1px solid #d1bfdc;
+  border-radius: 14px;
+}
+.document-preview canvas {
+  display: block;
+  width: 100%;
+  height: auto;
+  background: #fff;
+  box-shadow: 0 4px 20px #2b12381a;
+}
+.document-sign-form {
+  padding: 24px;
+  margin-top: 24px;
+  background: #f6f0fc;
+  border: 1px solid #d4bee4;
+  border-radius: 14px;
+}
+.document-drawing canvas {
+  width: 100%;
+  height: 150px;
+  border: 1px dashed #8d69a8;
+  background: #fff;
+  border-radius: 10px;
+  touch-action: none;
+  cursor: crosshair;
+}
+.document-drawing p,
+.document-drawing small {
+  display: block;
+  font-size: 14px;
+  line-height: 1.6;
+  margin: 10px 0;
+  color: #715780;
+}
+.document-drawing .text-button {
+  margin: 8px 0;
+}
+.document-signed {
+  padding: 24px;
+  margin-top: 24px;
+  background: #e9def5;
+  border-radius: 14px;
+  color: #44235f;
+}
+.document-signed h3 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.document-history {
+  margin-top: 28px;
+}
+.document-history > h3 {
+  margin-bottom: 15px;
+}
+.document-history article {
+  padding: 15px 0;
+  border-top: 1px solid #e4d8ed;
+}
+.document-history small {
+  display: block;
+  font-size: 12px;
+  margin-top: 8px;
+  color: #776384;
+}
+.documents-view .planning-card-heading h2 {
+  font-size: 25px;
+}
+.documents-view .planning-actions .button {
+  font-size: 14px;
+}
+.documents-view .notice,
+.document-dialog .notice {
+  padding: 16px;
+  border-radius: 10px;
+  background: #e9ddf4;
+  line-height: 1.6;
+}
+.documents-view .error,
+.document-dialog .error {
+  padding: 15px;
+  border: 1px solid #c298d9;
+  border-radius: 10px;
+  line-height: 1.6;
+}
+@media (max-width: 650px) {
+  .document-dialog {
+    width: calc(100vw - 20px);
+    padding: 20px !important;
+  }
+  .document-preview {
+    padding: 8px;
+  }
+  .document-sign-form {
+    padding: 16px;
+  }
+  .document-page-controls .button {
+    padding: 8px 10px;
+    font-size: 12px;
+  }
+  .document-page-controls {
+    font-size: 12px;
+  }
+  .documents-view .planning-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+  .document-dialog .planning-check {
+    align-items: start;
+  }
+}

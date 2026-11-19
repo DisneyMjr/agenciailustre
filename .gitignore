@@ -5,3 +5,5 @@ dist/
 .env*
 !.env.example
 test-results/
+
+public/pdf-resources/

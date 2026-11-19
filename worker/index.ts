@@ -1,3 +1,4 @@
+import { documentsRoute } from "./documents";
 import { planningRoute } from "./planning";
 import {
   kinds,
@@ -224,6 +225,11 @@ async function api(req: Request, env: Env) {
     return (await portfolioRoute(req, env.DB, user, body))!;
   if (/^\/api\/(meetings|editorial)(?:\/|$)/.test(path))
     return (await planningRoute(req, env.DB, user, body))!;
+  if (/^\/api\/documents(?:\/|$)/.test(path)) {
+    if (method === "POST" && path.endsWith("/sign"))
+      await limit(env, `signature:${user.id}`, 12);
+    return (await documentsRoute(req, env.DB, user, body))!;
+  }
   if (path === "/api/me" && method === "GET") return json({ user });
   if (path === "/api/summary" && method === "GET")
     return json({ summary: await dashboardSummary(env.DB, user) });
@@ -448,6 +454,20 @@ async function api(req: Request, env: Env) {
         ).all()
       ).results,
       portfolio_images_included: false,
+      documents: (
+        await env.DB.prepare(
+          "SELECT id,title,client_id,recipient_id,recipient_name,recipient_email,pdf_sha256,pdf_size,status,version,archived,created_at,sent_at,signed_at FROM documents",
+        ).all()
+      ).results,
+      document_signatures: (
+        await env.DB.prepare(
+          "SELECT document_id,manifest,manifest_sha256,created_at FROM document_signatures",
+        ).all()
+      ).results,
+      document_events: (
+        await env.DB.prepare("SELECT * FROM document_events").all()
+      ).results,
+      document_files_included: false,
       meeting_slots: (await env.DB.prepare("SELECT * FROM meeting_slots").all())
         .results,
       meetings: (await env.DB.prepare("SELECT * FROM meetings").all()).results,

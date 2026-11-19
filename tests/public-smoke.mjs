@@ -33,7 +33,7 @@ try {
   const slots = await page.request.get(base + "/api/scheduling/slots");
   if (slots.status() !== 200 || !Array.isArray((await slots.json()).slots))
     throw Error("Scheduling unavailable");
-  for (const path of ["/api/meetings", "/api/editorial"])
+  for (const path of ["/api/meetings", "/api/editorial", "/api/documents"])
     if ((await page.request.get(base + path)).status() !== 401)
       throw Error("Planning access must be protected");
   if (errors.length) throw Error(errors.join("\n"));
