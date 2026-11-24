@@ -88,6 +88,7 @@ test("serves institutional site and portal with browser security headers", async
 test("anonymous visitors cannot read management data", async () => {
   assert.equal((await request("/records/clients")).status, 401);
   assert.equal((await request("/export")).status, 401);
+  assert.equal((await request("/materials/status")).status, 401);
 });
 test("rejects cross-origin mutations and malformed JSON", async () => {
   assert.equal(
@@ -273,6 +274,19 @@ async function documentFixture(title = "Proposta de teste") {
   pdf.addPage([595, 842]).drawText(title, { x: 50, y: 750, size: 22, font });
   return Buffer.from(await pdf.save()).toString("base64");
 }
+test("materials use the authenticated client's scope and block client uploads", async () => {
+  const list = await request("/materials?client=!!", { cookie: clientCookie });
+  assert.equal(list.status, 200);
+  assert.deepEqual(list.body, { files: [], next: null });
+  assert.equal((await request("/materials?client=!!", { cookie: teamCookie })).status, 404);
+  assert.equal((await request("/materials/upload?client=" + clientB, {
+    method: "POST", data: {}, cookie: clientCookie,
+  })).status, 403);
+  assert.equal((await request("/materials/google", {
+    method: "POST", data: {}, cookie: teamCookie,
+  })).status, 403);
+});
+
 test("documents lock sent PDFs and enforce recipient-only password-confirmed signatures", async () => {
   const signer = (await request("/me", { cookie: clientCookie })).body.user;
   const data = {

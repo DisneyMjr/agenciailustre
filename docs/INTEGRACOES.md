@@ -41,3 +41,16 @@ Uma emissão integrada futura precisa de CNPJ, município, parâmetros do servi�
 ## Dados e limites
 
 A atualização reutiliza o mesmo D1 e não altera nem recria tabelas. Arquivamento preserva dados. Metadados de aprovação/sincronização são mantidos quando registros são editados. Exportação de registros não substitui backup completo do banco. Testes de gravação usam banco local isolado; os testes públicos são somente de leitura.
+
+## Google Drive para materiais
+
+Em **Meus materiais**, a equipe seleciona o cliente e envia uma foto ou um vídeo. O portal cria a pasta privada no Meu Drive da agência no primeiro envio. Os clientes visualizam ou baixam pelo portal com a conta vinculada ao seu cadastro. A pasta permanece privada no Google Drive. Os arquivos usam o espaço da conta Google da agência.
+
+Para habilitar no Worker existente:
+
+1. Use o projeto **Agencia Ilustre Portal** (`noted-robot-515711-m3`), com a Google Drive API habilitada e um cliente OAuth de aplicativo da Web. O redirecionamento deve ser `https://agenciailustre.disneymjr.workers.dev/api/materials/google/callback`.
+2. Configure `GOOGLE_DRIVE_CLIENT_ID`, `GOOGLE_DRIVE_CLIENT_SECRET` e `GOOGLE_DRIVE_OWNER_EMAIL` no Worker. Armazene o segredo OAuth e o e-mail como segredos do Worker.
+3. Aplique a migração `0006_materials.sql` ao D1 existente e publique o Worker. O administrador pode abrir **Meus materiais → Conectar Google Drive** e autorizar a conta configurada. A integração usa o escopo por arquivo `drive.file` e mantém o token de renovação criptografado no D1.
+4. Envie um arquivo de teste pelo portal em um cadastro de teste. Confira a prévia e o download com esse cliente e verifique que outro cliente não consegue ler o arquivo pelo endereço direto.
+
+Enquanto a configuração OAuth estiver em **Testando**, o Google pode expirar a autorização de Drive em sete dias. Use **Reconectar Google Drive** se necessário. O envio aceita fotos JPEG, PNG, WebP, GIF e AVIF e vídeos MP4, WebM e MOV de até 2 GB por arquivo, dentro da cota disponível no Drive. Para prévia de vídeo em mais navegadores, exporte em MP4 com H.264.

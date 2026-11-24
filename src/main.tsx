@@ -676,6 +676,7 @@ function Login({ onLogin }: { onLogin: (u: User) => void }) {
   );
 }
 const Documents = lazy(() => import("./documents"));
+const Materials = lazy(() => import("./materials"));
 function Dashboard({ user, onLogout }: { user: User; onLogout: () => void }) {
   const [active, setActive] = useState<
     | Kind
@@ -687,7 +688,8 @@ function Dashboard({ user, onLogout }: { user: User; onLogout: () => void }) {
     | "meetings"
     | "editorial"
     | "documents"
-  >("overview");
+    | "materials"
+  >(() => new URLSearchParams(location.search).has("drive") ? "materials" : "overview");
   const [createKind, setCreateKind] = useState<Kind | null>(null);
   const [mobile, setMobile] = useState(false);
   const [revision, setRevision] = useState(0);
@@ -739,6 +741,16 @@ function Dashboard({ user, onLogout }: { user: User; onLogout: () => void }) {
         <Brand light />
         <p className="sidebar-caption">ESPAÇO DE TRABALHO</p>
         <nav aria-label="Gestão">
+          <button
+            className={active === "materials" ? "active" : ""}
+            onClick={() => {
+              setActive("materials");
+              setMobile(false);
+            }}
+          >
+            <FolderOpen size={18} />
+            Meus materiais
+          </button>
           <button
             className={active === "documents" ? "active" : ""}
             onClick={() => {
@@ -902,6 +914,10 @@ function Dashboard({ user, onLogout }: { user: User; onLogout: () => void }) {
                 setActive(kind);
               }}
             />
+          ) : active === "materials" ? (
+            <Suspense fallback={<p role="status">Carregando materiais…</p>}>
+              <Materials user={user} />
+            </Suspense>
           ) : active === "documents" ? (
             <Suspense fallback={<p role="status">Carregando documentos…</p>}>
               <Documents user={user} />

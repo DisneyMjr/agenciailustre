@@ -1,4 +1,5 @@
 import { documentsRoute } from "./documents";
+import { materialsCallback, materialsRoute, MaterialsEnv } from "./materials";
 import { planningRoute } from "./planning";
 import {
   kinds,
@@ -17,7 +18,7 @@ import {
 import { dashboardSummary } from "./summary";
 import { configured, syncContact, MauticEnv } from "./mautic";
 import { portfolioRoute } from "./portfolio";
-interface Env extends MauticEnv {
+interface Env extends MauticEnv, MaterialsEnv {
   DB: D1Database;
   ASSETS: Fetcher;
   BOOTSTRAP_TOKEN?: string;
@@ -139,6 +140,8 @@ async function api(req: Request, env: Env) {
   }
   const ip = await digest(req.headers.get("CF-Connecting-IP") ?? "local");
   if (path === "/api/health" && method === "GET") return json({ ok: true });
+  if (path === "/api/materials/google/callback" && method === "GET")
+    return materialsCallback(req, env);
   if (path.startsWith("/api/portfolio"))
     return (await portfolioRoute(req, env.DB, null, body))!;
   if (path.startsWith("/api/scheduling/")) {
@@ -221,6 +224,10 @@ async function api(req: Request, env: Env) {
   }
   const user = await current(req, env);
   if (!user) fail(401, "Entre na sua conta para continuar.");
+  if (/^\/api\/materials(?:\/|$)/.test(path)) {
+    if (method === "POST") await limit(env, `materials:${user.id}`, 60, 3600);
+    return materialsRoute(req, env, user, body);
+  }
   if (path.startsWith("/api/admin/portfolio"))
     return (await portfolioRoute(req, env.DB, user, body))!;
   if (/^\/api\/(meetings|editorial)(?:\/|$)/.test(path))
@@ -588,7 +595,8 @@ export default {
     }
     const headers = new Headers(response.headers);
     headers.set("X-Content-Type-Options", "nosniff");
-    headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
+    if (!headers.has("Referrer-Policy"))
+      headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
     headers.set("X-Frame-Options", "DENY");
     headers.set(
       "Permissions-Policy",
@@ -596,7 +604,7 @@ export default {
     );
     headers.set(
       "Content-Security-Policy",
-      "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'",
+      "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self' https://www.googleapis.com; frame-ancestors 'none'; base-uri 'self'; form-action 'self'",
     );
     return new Response(response.body, { status: response.status, headers });
   },
