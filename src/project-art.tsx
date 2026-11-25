@@ -14,7 +14,7 @@ async function request<T>(url: string, body?: unknown): Promise<T> {
     method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body),
   });
   if (!response.ok) {
-    const message = await response.json().catch(() => null);
+    const message = await response.json<{ error?: string }>().catch(() => null);
     throw new Error(message?.error ?? "Não foi possível consultar as artes.");
   }
   return response.json();
