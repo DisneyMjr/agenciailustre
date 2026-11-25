@@ -65,7 +65,7 @@ async function tokenExchange(env: MaterialsEnv, data: Record<string, string>) {
 async function google(token: string, url: string, options: RequestInit = {}) {
   const headers = new Headers(options.headers);
   headers.set("Authorization", "Bearer " + token);
-  return fetch(url, { ...options, headers, redirect: "error" });
+  return fetch(url, { ...options, headers, redirect: "manual" });
 }
 
 function requireDrive(response: Response) {
