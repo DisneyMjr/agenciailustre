@@ -159,3 +159,10 @@ O cliente vinculado entra no portal e pode aprovar a versão atual ou pedir ajus
 - Use o plano gratuito do Resend e verifique um domínio remetente que a agência já controla. Configure `RESEND_API_KEY` como segredo do Worker e `PROJECT_MAIL_FROM` como variável com o remetente verificado. O domínio de envio é independente do endereço do portal.
 - O portal registra avisos para as contas ativas do cliente vinculado. O e-mail contém um link para o projeto e requer login. O painel da equipe mostra o estado de cada aviso. Falhas temporárias entram em nova tentativa a cada cinco minutos, com até cinco tentativas.
 - Aplique a migração `0007_project_art.sql` ao D1 existente antes do deploy. O plano Workers Free e o banco existente são suficientes para a aplicação. O serviço de e-mail respeita as cotas do plano gratuito.
+
+
+## Cópia dos arquivos do site no R2
+
+O bucket privado `agenciailustre-backups` usa a classe Standard. Guarde nele arquivos ZIP do repositório, identificando a revisão arquivada. O ZIP contém o código, as migrações e os arquivos estáticos versionados. Para restaurar, extraia a cópia, instale as dependências com `npm ci` e revise o vínculo do D1 antes de publicar. Segredos do Worker são configurados separadamente.
+
+As artes, os PDFs e as imagens gravadas pelo portal ficam no D1. Uma cópia do código não contém esses arquivos. Para protegê-los, use a exportação do D1 em arquivo separado com acesso restrito. Os materiais guardados no Google Drive precisam de uma cópia própria. Antes de guardar exportações grandes, verifique a cota Standard compartilhada por todos os buckets da conta.
