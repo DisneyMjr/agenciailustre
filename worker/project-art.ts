@@ -10,7 +10,8 @@ type Project = { client_id: string | null; data: string };
 type Version = { id: string; number: number; decision: string | null };
 type Mail = { version_id: string; user_id: string; email: string; number: number; project_id: string; data: string };
 
-const maxBytes = 1_500_000;
+const maxFileBytes = 1_500_000;
+const maxBytes = 30_000_000;
 const maxFiles = 20;
 const bytesMatch = (bytes: Uint8Array, start: number, signature: number[]) =>
   signature.every((byte, index) => bytes[start + index] === byte);
@@ -22,7 +23,9 @@ function fileData(input: unknown) {
     "Arquivo inválido.");
   let bytes: Uint8Array;
   try {
-    bytes = Uint8Array.from(atob(file.content as string), (letter) => letter.charCodeAt(0));
+    const decoded = atob(file.content as string);
+    bytes = new Uint8Array(decoded.length);
+    for (let i = 0; i < decoded.length; i++) bytes[i] = decoded.charCodeAt(i);
   } catch {
     throw new HttpError(400, "Arquivo inválido.");
   }
@@ -85,26 +88,43 @@ export async function projectArtRoute(
     } });
   }
 
+  if (suffix === "/upload" && req.method === "POST" && staff) {
+    if (!project.client_id) throw new HttpError(409, "Vincule um cliente ao projeto.");
+    const file = fileData(await read(req, 2_010_000));
+    check(file.bytes.length <= maxFileBytes, "Cada arquivo pode ter até 1,5 MB.");
+    const id = crypto.randomUUID();
+    await DB.prepare(
+      "INSERT INTO project_art_uploads(id,project_id,client_id,user_id,name,mime,content) VALUES (?,?,?,?,?,?,?)",
+    ).bind(id, projectId, project.client_id, user.id, file.name, file.mime, file.bytes.buffer).run();
+    return json({ id }, 201);
+  }
+
   if (!suffix && req.method === "POST" && staff) {
     if (!project.client_id) throw new HttpError(409, "Vincule um cliente ao projeto.");
-    const input = await read(req, 2_010_000);
-    const files = input.files as unknown[];
-    check(Array.isArray(files) && files.length >= 1 && files.length <= maxFiles, `Anexe de 1 a ${maxFiles} arquivos.`);
-    const attachments = files.map(fileData);
-    check(attachments.reduce((total, file) => total + file.bytes.length, 0) <= maxBytes,
-      "O limite por versão é 1,5 MB.");
+    const input = await read(req);
+    const ids = input.uploads;
+    check(Array.isArray(ids) && ids.length > 0 && ids.length <= maxFiles &&
+      new Set(ids).size === ids.length && ids.every((id) => typeof id === "string" && /^[a-f0-9-]{36}$/.test(id)),
+      "Anexe de 1 a 20 arquivos.");
     check(Number.isSafeInteger(input.previous) && Number(input.previous) >= 0, "Versão inválida.");
     const note = field(input.note ?? "", 2000);
+    const uploads = "project_id=? AND client_id=? AND user_id=? AND id IN (" + ids.map(() => "?").join(",") + ")";
+    const args = [projectId, project.client_id, user.id, ...ids];
     const id = crypto.randomUUID();
     const written = await DB.batch([
       DB.prepare(`INSERT INTO project_art_versions(id,project_id,client_id,number,author_id,note)
         SELECT ?,r.id,r.client_id,?, ?,? FROM records r
         WHERE r.${projectScope} AND r.client_id=?
-        AND COALESCE((SELECT MAX(v.number) FROM project_art_versions v WHERE v.project_id=r.id),0)=?`)
-        .bind(id, Number(input.previous) + 1, user.id, note, projectId, project.client_id, input.previous),
-      ...attachments.map((file) => DB.prepare(`INSERT INTO project_art_files(id,version_id,name,mime,content)
-        SELECT ?,id,?,?,? FROM project_art_versions WHERE id=?`)
-        .bind(crypto.randomUUID(), file.name, file.mime, file.bytes.buffer, id)),
+        AND COALESCE((SELECT MAX(v.number) FROM project_art_versions v WHERE v.project_id=r.id),0)=?
+        AND (SELECT COUNT(*) FROM project_art_uploads WHERE ${uploads})=?
+        AND (SELECT SUM(length(content)) FROM project_art_uploads WHERE ${uploads})<=?`)
+        .bind(id, Number(input.previous) + 1, user.id, note, projectId, project.client_id, input.previous, ...args, ids.length, ...args, maxBytes),
+      DB.prepare(`INSERT INTO project_art_files(id,version_id,name,mime,content)
+        SELECT id,?,name,mime,content FROM project_art_uploads
+        WHERE ${uploads} AND EXISTS (SELECT 1 FROM project_art_versions WHERE id=?)`)
+        .bind(id, ...args, id),
+      DB.prepare(`DELETE FROM project_art_uploads WHERE ${uploads}
+        AND EXISTS (SELECT 1 FROM project_art_versions WHERE id=?)`).bind(...args, id),
       DB.prepare(`INSERT INTO project_art_mail(version_id,user_id)
         SELECT v.id,u.id FROM project_art_versions v JOIN users u ON u.client_id=v.client_id
         WHERE v.id=? AND u.role='client' AND u.disabled=0`).bind(id),
@@ -114,7 +134,7 @@ export async function projectArtRoute(
     ]);
     if (!written[0].meta.changes) throw new HttpError(409, "O projeto mudou. Atualize a lista antes de enviar.");
     defer(sendProjectArtMail(env, id));
-    return json({ ok: true, recipients: written[attachments.length + 1].meta.changes }, 201);
+    return json({ ok: true, recipients: written[3].meta.changes }, 201);
   }
 
   const decisionId = suffix.match(/^\/([a-f0-9-]{36})\/decision$/)?.[1];

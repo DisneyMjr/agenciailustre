@@ -244,7 +244,7 @@ async function api(req: Request, env: Env, ctx: ExecutionContext) {
     return json({ summary: await dashboardSummary(env.DB, user) });
   const art = path.match(/^\/api\/projects\/([a-f0-9-]{36})\/art(\/.*)?$/);
   if (art) {
-    if (method === "POST") await limit(env, "project-art:" + user.id, 50, 3600);
+    if (method === "POST") await limit(env, "project-art:" + user.id, 150, 3600);
     return projectArtRoute(req, env, user, art[1], art[2] ?? "", body, (promise) =>
       ctx.waitUntil(promise.catch(() => console.error("Project art mail queue unavailable"))));
   }
@@ -619,6 +619,7 @@ export default {
   async scheduled(_event: ScheduledEvent, env: Env) {
     await sendProjectArtMail(env);
     if (_event.cron !== "23 3 * * *") return;
+    await env.DB.prepare("DELETE FROM project_art_uploads WHERE created_at < datetime('now','-1 day')").run();
     const now = Math.floor(Date.now() / 1000);
     await env.DB.batch([
       env.DB.prepare("DELETE FROM sessions WHERE expires_at<=?").bind(now),

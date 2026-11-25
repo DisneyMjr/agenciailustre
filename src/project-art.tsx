@@ -7,7 +7,7 @@ type Version = {
   files: ArtFile[]; mail: string | null;
 };
 type Art = { title: string; linked: boolean; mailConfigured: boolean; versions: Version[] };
-const maxBytes = 1_500_000;
+const maxFileBytes = 1_500_000;
 const maxFiles = 20;
 
 async function request<T>(url: string, body?: unknown): Promise<T> {
@@ -63,10 +63,18 @@ export function ProjectArt({ id, staff, onChange }: { id: string; staff: boolean
         setComment("");
         setNotice(decision === "approve" ? "Arte aprovada." : "Pedido de ajustes registrado.");
       } else {
-        if (!files.length || files.length > maxFiles || files.reduce((sum, file) => sum + file.size, 0) > maxBytes)
-          throw new Error(`Selecione de 1 a ${maxFiles} arquivos, com até 1,5 MB no total.`);
+        if (!files.length || files.length > maxFiles)
+          throw new Error(`Selecione de 1 a ${maxFiles} arquivos.`);
+        const oversized = files.find((file) => file.size > maxFileBytes);
+        if (oversized) throw new Error(`${oversized.name} passa do limite de 1,5 MB por arquivo.`);
+        const uploads: string[] = [];
+        for (const [index, file] of files.entries()) {
+          setNotice(`Enviando arquivo ${index + 1} de ${files.length}…`);
+          const uploaded = await request<{ id: string }>(url + "/upload", await attachment(file));
+          uploads.push(uploaded.id);
+        }
         const result = await request<{ recipients: number }>(url, {
-          previous: latest?.number ?? 0, note, files: await Promise.all(files.map(attachment)),
+          previous: latest?.number ?? 0, note, uploads,
         });
         setFiles([]);
         setNote("");
@@ -77,6 +85,7 @@ export function ProjectArt({ id, staff, onChange }: { id: string; staff: boolean
       }
       onChange();
     } catch (error) {
+      setNotice("");
       setError((error as Error).message);
     } finally {
       try { setData(await request<Art>(url)); }
@@ -102,7 +111,7 @@ export function ProjectArt({ id, staff, onChange }: { id: string; staff: boolean
             <input key={inputKey} type="file" multiple accept=".pdf,.jpg,.jpeg,.png,.webp"
               onChange={(event) => setFiles(Array.from(event.target.files ?? []))} />
           </label>
-          <small>Até {maxFiles} arquivos em PDF, JPEG, PNG ou WebP, com 1,5 MB no total.</small>
+          <small>Até {maxFiles} arquivos em PDF, JPEG, PNG ou WebP, com até 1,5 MB por arquivo.</small>
           <label>Mensagem para o cliente
             <textarea maxLength={2000} value={note} onChange={(event) => setNote(event.target.value)} />
           </label>
