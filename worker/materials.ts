@@ -59,7 +59,7 @@ async function tokenExchange(env: MaterialsEnv, data: Record<string, string>) {
   });
   if (!response.ok)
     throw new HttpError(503, "Autorize novamente a conta da agência no Google Drive.");
-  return response.json<{ access_token: string; refresh_token?: string }>();
+  return response.json<{ access_token: string; refresh_token?: string; scope?: string }>();
 }
 
 async function google(token: string, url: string, options: RequestInit = {}) {
@@ -101,9 +101,11 @@ export async function materialsCallback(req: Request, env: MaterialsEnv) {
     "Set-Cookie": `ilustre_drive=; Path=${callback}; Max-Age=0; HttpOnly; Secure; SameSite=Lax`,
   };
   let result = "erro";
+  let step = "retorno";
   try {
     const code = url.searchParams.get("code"), state = url.searchParams.get("state");
     check(cookie && code && state, "Autorização inválida.");
+    step = "sessao";
     const { secret, owner } = credentials(env);
     const pending = JSON.parse(await decrypt(secret, cookie)) as {
       state: string; verifier: string; expires: number; admin: string;
@@ -112,26 +114,33 @@ export async function materialsCallback(req: Request, env: MaterialsEnv) {
     const admin = await env.DB.prepare("SELECT id FROM users WHERE id=? AND role='admin' AND disabled=0")
       .bind(pending.admin).first();
     check(admin, "Acesso de administrador necessário.");
+    step = "token";
     const token = await tokenExchange(env, {
       code, grant_type: "authorization_code", code_verifier: pending.verifier,
       redirect_uri: url.origin + callback,
     });
-    const identity = await requireDrive(await google(
-      token.access_token, "https://openidconnect.googleapis.com/v1/userinfo",
-    )).json<{ email?: string; email_verified?: boolean }>();
-    if (identity.email?.toLowerCase() !== owner || !identity.email_verified) {
-      result = "conta";
-    } else if (token.refresh_token) {
-      await env.DB.prepare(
-        "INSERT INTO material_drive_connection VALUES (1,?) ON CONFLICT(id) DO UPDATE SET token=excluded.token",
-      ).bind(await encrypt(secret, token.refresh_token)).run();
-      result = "ok";
+    if (!token.scope?.split(" ").includes("https://www.googleapis.com/auth/drive.file")) {
+      result = "permissao";
+    } else {
+      step = "identidade";
+      const info = await google(token.access_token, api + "/about?fields=user%28emailAddress%29");
+      step = "identidade-" + info.status;
+      const { user } = await requireDrive(info).json<{ user?: { emailAddress?: string } }>();
+      if (user?.emailAddress?.toLowerCase() !== owner) {
+        result = "conta";
+      } else if (token.refresh_token) {
+        step = "salvar";
+        await env.DB.prepare(
+          "INSERT INTO material_drive_connection VALUES (1,?) ON CONFLICT(id) DO UPDATE SET token=excluded.token",
+        ).bind(await encrypt(secret, token.refresh_token)).run();
+        result = "ok";
+      } else result = "renovacao";
     }
   } catch {
-    // Return only a generic status. The authorization code stays out of the portal URL.
+    console.warn("Google Drive authorization failed at:", step);
   }
   return new Response(null, {
-    status: 303, headers: { ...headers, Location: "/portal?drive=" + result },
+    status: 303, headers: { ...headers, Location: "/portal?drive=" + (result === "erro" ? step : result) },
   });
 }
 
@@ -145,7 +154,7 @@ async function authorize(req: Request, env: MaterialsEnv, user: User) {
   const origin = new URL(req.url).origin;
   const params = new URLSearchParams({
     client_id: id, redirect_uri: origin + callback, response_type: "code",
-    scope: "https://www.googleapis.com/auth/drive.file openid email",
+    scope: "https://www.googleapis.com/auth/drive.file",
     access_type: "offline", prompt: "consent", login_hint: owner, state,
     code_challenge: pkce, code_challenge_method: "S256",
   });

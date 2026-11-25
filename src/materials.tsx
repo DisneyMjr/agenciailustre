@@ -203,7 +203,10 @@ export default function Materials({ user }: { user: User }) {
       </header>
       {result === "ok" && <p role="status">Google Drive conectado.</p>}
       {result === "conta" && <p role="alert">Selecione a conta Google da agência.</p>}
-      {result === "erro" && <p role="alert">A autorização do Google Drive não foi concluída.</p>}
+      {result === "permissao" && <p role="alert">Na tela do Google, permita ao portal acessar os arquivos que ele cria no Drive.</p>}
+      {result === "renovacao" && <p role="alert">O Google não enviou a autorização de longa duração. Reconecte o Drive.</p>}
+      {result && !["ok", "conta", "permissao", "renovacao"].includes(result) &&
+        <p role="alert" data-drive-stage={result}>A autorização do Google Drive não foi concluída. Tente conectar novamente.</p>}
       {error && <p role="alert" className="error">{error}</p>}
       {!status && !error && <p role="status">Verificando Google Drive…</p>}
       {status && !status.connected && <p>O Google Drive ainda não está conectado.</p>}
