@@ -150,7 +150,7 @@ Para assinatura certificada ou equivalência a outros recursos do Documenso (cam
 
 ## Artes para aprovação em projetos
 
-Em **Projetos → Artes para aprovação**, selecione um projeto vinculado a um cliente. A equipe pode enviar até cinco arquivos JPEG, PNG, WebP ou PDF por versão, com até 1,5 MB de arquivos somados. Cada envio cria uma versão numerada e preserva os arquivos originais e as respostas anteriores. As imagens têm prévia e os PDFs ficam disponíveis para download.
+Em **Projetos → Artes para aprovação**, selecione um projeto vinculado a um cliente. A equipe pode enviar até 20 arquivos JPEG, PNG, WebP ou PDF por versão, com até 1,5 MB de arquivos somados. Cada envio cria uma versão numerada e preserva os arquivos originais e as respostas anteriores. As imagens têm prévia e os PDFs ficam disponíveis para download.
 
 O cliente vinculado entra no portal e pode aprovar a versão atual ou pedir ajustes com um comentário. O pedido volta o projeto para **Em andamento** e a aprovação marca **Concluído**. Projetos sem artes continuam com o fluxo de aprovação anterior. Os arquivos ficam privados no D1 e integram o backup do banco.
 

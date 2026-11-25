@@ -11,6 +11,7 @@ type Version = { id: string; number: number; decision: string | null };
 type Mail = { version_id: string; user_id: string; email: string; number: number; project_id: string; data: string };
 
 const maxBytes = 1_500_000;
+const maxFiles = 20;
 const bytesMatch = (bytes: Uint8Array, start: number, signature: number[]) =>
   signature.every((byte, index) => bytes[start + index] === byte);
 function fileData(input: unknown) {
@@ -88,7 +89,7 @@ export async function projectArtRoute(
     if (!project.client_id) throw new HttpError(409, "Vincule um cliente ao projeto.");
     const input = await read(req, 2_010_000);
     const files = input.files as unknown[];
-    check(Array.isArray(files) && files.length >= 1 && files.length <= 5, "Anexe de 1 a 5 arquivos.");
+    check(Array.isArray(files) && files.length >= 1 && files.length <= maxFiles, `Anexe de 1 a ${maxFiles} arquivos.`);
     const attachments = files.map(fileData);
     check(attachments.reduce((total, file) => total + file.bytes.length, 0) <= maxBytes,
       "O limite por versão é 1,5 MB.");

@@ -8,6 +8,7 @@ type Version = {
 };
 type Art = { title: string; linked: boolean; mailConfigured: boolean; versions: Version[] };
 const maxBytes = 1_500_000;
+const maxFiles = 20;
 
 async function request<T>(url: string, body?: unknown): Promise<T> {
   const response = await fetch(url, body === undefined ? {} : {
@@ -62,8 +63,8 @@ export function ProjectArt({ id, staff, onChange }: { id: string; staff: boolean
         setComment("");
         setNotice(decision === "approve" ? "Arte aprovada." : "Pedido de ajustes registrado.");
       } else {
-        if (!files.length || files.length > 5 || files.reduce((sum, file) => sum + file.size, 0) > maxBytes)
-          throw new Error("Selecione de 1 a 5 arquivos, com até 1,5 MB no total.");
+        if (!files.length || files.length > maxFiles || files.reduce((sum, file) => sum + file.size, 0) > maxBytes)
+          throw new Error(`Selecione de 1 a ${maxFiles} arquivos, com até 1,5 MB no total.`);
         const result = await request<{ recipients: number }>(url, {
           previous: latest?.number ?? 0, note, files: await Promise.all(files.map(attachment)),
         });
@@ -101,7 +102,7 @@ export function ProjectArt({ id, staff, onChange }: { id: string; staff: boolean
             <input key={inputKey} type="file" multiple accept=".pdf,.jpg,.jpeg,.png,.webp"
               onChange={(event) => setFiles(Array.from(event.target.files ?? []))} />
           </label>
-          <small>Até 5 arquivos em PDF, JPEG, PNG ou WebP, com 1,5 MB no total.</small>
+          <small>Até {maxFiles} arquivos em PDF, JPEG, PNG ou WebP, com 1,5 MB no total.</small>
           <label>Mensagem para o cliente
             <textarea maxLength={2000} value={note} onChange={(event) => setNote(event.target.value)} />
           </label>
