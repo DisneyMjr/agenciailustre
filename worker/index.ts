@@ -1,3 +1,4 @@
+import { projectArtRoute, sendProjectArtMail, type ProjectArtEnv } from "./project-art";
 import { documentsRoute } from "./documents";
 import { materialsCallback, materialsRoute, MaterialsEnv } from "./materials";
 import { planningRoute } from "./planning";
@@ -18,7 +19,7 @@ import {
 import { dashboardSummary } from "./summary";
 import { configured, syncContact, MauticEnv } from "./mautic";
 import { portfolioRoute } from "./portfolio";
-interface Env extends MauticEnv, MaterialsEnv {
+interface Env extends MauticEnv, MaterialsEnv, ProjectArtEnv {
   DB: D1Database;
   ASSETS: Fetcher;
   BOOTSTRAP_TOKEN?: string;
@@ -128,7 +129,7 @@ async function session(user: User, env: Env, req: Request) {
 }
 const allowedRead = (user: User, kind: string) =>
   user.role !== "client" || ["projects", "tasks", "finance"].includes(kind);
-async function api(req: Request, env: Env) {
+async function api(req: Request, env: Env, ctx: ExecutionContext) {
   const url = new URL(req.url),
     path = url.pathname.replace(/\/$/, "");
   const method = req.method;
@@ -241,6 +242,12 @@ async function api(req: Request, env: Env) {
   if (path === "/api/me" && method === "GET") return json({ user });
   if (path === "/api/summary" && method === "GET")
     return json({ summary: await dashboardSummary(env.DB, user) });
+  const art = path.match(/^\/api\/projects\/([a-f0-9-]{36})\/art(\/.*)?$/);
+  if (art) {
+    if (method === "POST") await limit(env, "project-art:" + user.id, 50, 3600);
+    return projectArtRoute(req, env, user, art[1], art[2] ?? "", body, (promise) =>
+      ctx.waitUntil(promise.catch(() => console.error("Project art mail queue unavailable"))));
+  }
   const approval = path.match(/^\/api\/projects\/([a-f0-9-]{36})\/approval$/);
   if (approval && method === "POST") {
     if (user.role !== "client" || !user.client_id)
@@ -261,7 +268,7 @@ async function api(req: Request, env: Env) {
       approval_at: new Date().toISOString(),
     };
     const changed = await env.DB.prepare(
-      "UPDATE records SET data=json_patch(data,?),updated_at=CURRENT_TIMESTAMP WHERE id=? AND kind='projects' AND client_id=? AND archived=0 AND json_extract(data,'$.status')='Em aprovação'",
+      "UPDATE records SET data=json_patch(data,?),updated_at=CURRENT_TIMESTAMP WHERE id=? AND kind='projects' AND client_id=? AND archived=0 AND json_extract(data,'$.status')='Em aprovação' AND NOT EXISTS (SELECT 1 FROM project_art_versions v WHERE v.project_id=records.id)",
     )
       .bind(JSON.stringify(patch), approval[1], user.client_id)
       .run();
@@ -503,7 +510,7 @@ async function api(req: Request, env: Env) {
       if (user.role === "client") args.push(user.client_id ?? "NO_CLIENT");
       args.push(51, page * 50);
       const rows = await env.DB.prepare(
-        `SELECT * FROM records WHERE kind=? AND archived=0 AND json_extract(data,'$.name') LIKE ?${scope} ORDER BY updated_at DESC,id LIMIT ? OFFSET ?`,
+        `SELECT records.*, CASE WHEN kind='projects' THEN EXISTS (SELECT 1 FROM project_art_versions v WHERE v.project_id=records.id) ELSE 0 END AS has_art FROM records WHERE kind=? AND archived=0 AND json_extract(data,'$.name') LIKE ?${scope} ORDER BY updated_at DESC,id LIMIT ? OFFSET ?`,
       )
         .bind(...args)
         .all<{
@@ -577,11 +584,11 @@ async function api(req: Request, env: Env) {
   return fail(404, "Recurso não encontrado.");
 }
 export default {
-  async fetch(req: Request, env: Env): Promise<Response> {
+  async fetch(req: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     let response: Response;
     try {
       response = new URL(req.url).pathname.startsWith("/api/")
-        ? await api(req, env)
+        ? await api(req, env, ctx)
         : await env.ASSETS.fetch(req);
     } catch (e) {
       response =
@@ -610,6 +617,8 @@ export default {
     return new Response(response.body, { status: response.status, headers });
   },
   async scheduled(_event: ScheduledEvent, env: Env) {
+    await sendProjectArtMail(env);
+    if (_event.cron !== "23 3 * * *") return;
     const now = Math.floor(Date.now() / 1000);
     await env.DB.batch([
       env.DB.prepare("DELETE FROM sessions WHERE expires_at<=?").bind(now),

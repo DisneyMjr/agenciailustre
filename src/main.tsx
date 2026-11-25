@@ -1,3 +1,4 @@
+import { ProjectArt } from "./project-art";
 import { Meetings, Editorial, PublicBooking } from "./planning";
 import { useAgencyMotion } from "./agency-motion";
 import {
@@ -553,7 +554,7 @@ function Login({ onLogin }: { onLogin: (u: User) => void }) {
     try {
       const r = await api(setup ? "/setup" : "/login", "POST", d);
       onLogin(r.user);
-      history.replaceState({}, "", "/portal");
+      history.replaceState({}, "", "/portal" + location.search);
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -689,7 +690,10 @@ function Dashboard({ user, onLogout }: { user: User; onLogout: () => void }) {
     | "editorial"
     | "documents"
     | "materials"
-  >(() => new URLSearchParams(location.search).has("drive") ? "materials" : "overview");
+  >(() => {
+    const params = new URLSearchParams(location.search);
+    return params.has("arte") ? "projects" : params.has("drive") ? "materials" : "overview";
+  });
   const [createKind, setCreateKind] = useState<Kind | null>(null);
   const [mobile, setMobile] = useState(false);
   const [revision, setRevision] = useState(0);
@@ -986,6 +990,10 @@ function Records({
 }) {
   const config = sections.find((s) => s.key === kind)!;
   const [rows, setRows] = useState<Entry[]>([]);
+  const [artProject, setArtProject] = useState(() => {
+    const id = new URLSearchParams(location.search).get("arte") ?? "";
+    return /^[a-f0-9-]{36}$/.test(id) ? id : "";
+  });
   const [clients, setClients] = useState<Entry[]>([]);
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(0);
@@ -1168,11 +1176,27 @@ function Records({
           </button>
         )}
       </div>
+      {kind === "projects" && (
+        <section className="panel approval-card">
+          <h2>Artes para aprovação</h2>
+          <label>Projeto
+            <select value={artProject} onChange={(event) => setArtProject(event.target.value)}>
+              <option value="">Selecione um projeto</option>
+              {artProject && !rows.some((row) => row.id === artProject) && (
+                <option value={artProject}>Projeto selecionado</option>
+              )}
+              {rows.map((row) => <option key={row.id} value={row.id}>{row.data.name}</option>)}
+            </select>
+          </label>
+          {artProject && <ProjectArt key={artProject} id={artProject} staff={canEdit}
+            onChange={() => { void load(); onChange(); }} />}
+        </section>
+      )}
       {kind === "finance" && <FinanceInsights summary={summary} />}
       {kind === "projects" &&
         user.role === "client" &&
         rows
-          .filter((r) => r.data.status === "Em aprovação")
+          .filter((r) => r.data.status === "Em aprovação" && !(r as Entry & { has_art?: number }).has_art)
           .map((r) => (
             <ProjectApproval
               key={r.id}

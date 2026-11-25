@@ -42,7 +42,7 @@ As cotas oficiais do plano gratuito incluem 100 mil requisições Workers/dia e 
 - Cadastre o cliente antes de criar seu acesso. Vincule os projetos, tarefas e lançamentos ao cliente correto. Sem vínculo, são internos.
 - Campanhas são planejamento e registro de produção. **Não há disparo de e-mails pelo portal, automação de jornadas, pixels de rastreamento ou instalação do Mautic.** Existe um conector manual de contatos, condicionado à instalação externa e aos segredos descritos em [Integrações](docs/INTEGRACOES.md). Para essas funções será necessário integrar um provedor autorizado e configurar remetente, consentimento, descadastro e DNS. Nada foi contratado.
 - Financeiro é controle interno, sem cobrança automática, PIX, conciliação ou emissão fiscal. Pode guardar referências das NFS-e emitidas no governo. ACBr comercial não foi ativado; componentes nativos dependem de infraestrutura e configuração externas.
-- Há upload de imagens no portfólio. Não há anexos gerais, Google Drive, Google Calendar ou geração de PDF. Não foram ativados serviços externos.
+- Há upload de imagens no portfólio. As artes de projetos seguem o fluxo descrito abaixo. Não foram ativados serviços externos.
 - O administrador cria e bloqueia acessos e redefine senhas de equipe/clientes; cada pessoa também pode alterar sua senha. Não há e-mail de recuperação. Se o administrador perder acesso, a recuperação exige acesso administrativo ao banco; preserve os dados e não reinicie a configuração inicial.
 - Exportação pelo portal inclui registros e arquivados, mas não senhas/sessões. Para restauração completa, use exportação D1 protegida. Não há restauração automática pelo portal.
 - Revise dados de contato e retenção periodicamente. O texto institucional e a identidade visual são uma proposta inicial; substitua por informações oficiais da agência antes de divulgá-las como posicionamento definitivo.
@@ -146,3 +146,16 @@ A migração `0005_documents.sql` é aditiva. Triggers bloqueiam alterações de
 Arquivos ficam no D1 existente; não é necessário ativar R2, SMTP, certificado ou serviço pago para esta modalidade. Aplicam-se as cotas de armazenamento, leitura, gravação e requisições da conta gratuita. Bibliotecas PDF são carregadas apenas quando necessárias. A exportação administrativa contém metadados, eventos e manifestos; **não inclui os arquivos PDF nem desenhos**. Para cópia completa, use o backup D1 protegido fora do repositório. Os PDFs e registros JSON baixados pelo cliente também contêm informações pessoais e precisam ser guardados com cuidado.
 
 Para assinatura certificada ou equivalência a outros recursos do Documenso (campos posicionáveis, vários signatários, convites por e-mail, selo PAdES), será necessária outra etapa com infraestrutura e configurações específicas. Nada disso foi ativado ou contratado.
+
+
+## Artes para aprovação em projetos
+
+Em **Projetos → Artes para aprovação**, selecione um projeto vinculado a um cliente. A equipe pode enviar até cinco arquivos JPEG, PNG, WebP ou PDF por versão, com até 1,5 MB de arquivos somados. Cada envio cria uma versão numerada e preserva os arquivos originais e as respostas anteriores. As imagens têm prévia e os PDFs ficam disponíveis para download.
+
+O cliente vinculado entra no portal e pode aprovar a versão atual ou pedir ajustes com um comentário. O pedido volta o projeto para **Em andamento** e a aprovação marca **Concluído**. Projetos sem artes continuam com o fluxo de aprovação anterior. Os arquivos ficam privados no D1 e integram o backup do banco.
+
+### Avisos por e-mail
+
+- Use o plano gratuito do Resend e verifique um domínio remetente que a agência já controla. Configure `RESEND_API_KEY` como segredo do Worker e `PROJECT_MAIL_FROM` como variável com o remetente verificado. O domínio de envio é independente do endereço do portal.
+- O portal registra avisos para as contas ativas do cliente vinculado. O e-mail contém um link para o projeto e requer login. O painel da equipe mostra o estado de cada aviso. Falhas temporárias entram em nova tentativa a cada cinco minutos, com até cinco tentativas.
+- Aplique a migração `0007_project_art.sql` ao D1 existente antes do deploy. O plano Workers Free e o banco existente são suficientes para a aplicação. O serviço de e-mail respeita as cotas do plano gratuito.
