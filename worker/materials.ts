@@ -218,6 +218,42 @@ export async function materialsRoute(
   if (!record) throw new HttpError(404, "Cliente não encontrado.");
   const folder = await fileFolder(env, client);
 
+  if (path === "/upload" && req.method === "PUT") {
+    if (!staff) throw new HttpError(403, "Apenas a equipe pode enviar materiais.");
+    const range = req.headers.get("Content-Range") ?? "";
+    const part = range.match(/^bytes (?:(\d+)-(\d+)|\*)\/(\d+)$/);
+    const ticket = req.headers.get("X-Ilustre-Upload") ?? "";
+    check(part && /^[a-f0-9]{56,4096}$/.test(ticket), "Envio inválido.");
+    const { secret } = credentials(env);
+    let upload: { location: string; user: string; client: string; size: number; type: string; expires: number };
+    try {
+      upload = JSON.parse(await decrypt(secret, ticket));
+    } catch {
+      throw new HttpError(400, "Sessão de envio inválida.");
+    }
+    check(upload.user === user.id && upload.client === client && upload.expires > Date.now()
+      && upload.size === Number(part[3]), "Sessão de envio inválida ou expirada.");
+    const length = part[1] === undefined ? 0 : Number(part[2]) - Number(part[1]) + 1;
+    check(length >= 0 && length <= 8 * 1024 ** 2 && Number(part[2] ?? 0) < upload.size
+      && Number(req.headers.get("Content-Length") ?? 0) === length, "Tamanho de envio inválido.");
+    const chunk = length ? await req.arrayBuffer() : undefined;
+    check((chunk?.byteLength ?? 0) === length, "Tamanho de envio inválido.");
+    const response = await google(await access(env), upload.location, {
+      method: "PUT",
+      headers: { "Content-Range": range, "Content-Type": upload.type },
+      body: chunk,
+    });
+    const details = response.status >= 400
+      ? await response.json<{ error?: { errors?: { reason?: string }[]; status?: string } }>().catch(() => null)
+      : null;
+    const reason = details?.error?.errors?.[0]?.reason ?? details?.error?.status ?? "";
+    return new Response(null, { status: response.status, headers: {
+      "Cache-Control": "no-store",
+      ...(/^[a-zA-Z_]{1,64}$/.test(reason) ? { "X-Ilustre-Drive-Error": reason } : {}),
+      ...(response.headers.has("Range") ? { Range: response.headers.get("Range")! } : {}),
+    } });
+  }
+
   if (path === "" && req.method === "GET") {
     if (!folder) return reply({ files: [], next: null });
     const query = new URLSearchParams({
@@ -245,7 +281,7 @@ export async function materialsRoute(
     const upload = await google(token,
       "https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable&fields=id", {
         method: "POST",
-        headers: { "Content-Type": "application/json", Origin: url.origin,
+        headers: { "Content-Type": "application/json",
           "X-Upload-Content-Type": type, "X-Upload-Content-Length": String(size) },
         body: JSON.stringify({ name, mimeType: type, parents: [parent] }),
       },
@@ -253,7 +289,10 @@ export async function materialsRoute(
     const location = requireDrive(upload).headers.get("Location");
     if (!location || new URL(location).origin !== "https://www.googleapis.com")
       throw new HttpError(502, "O Drive não forneceu um endereço de envio válido.");
-    return reply({ url: location });
+    const ticket = await encrypt(credentials(env).secret, JSON.stringify({
+      location, user: user.id, client, type, size, expires: Date.now() + 3_600_000,
+    }));
+    return reply({ url: route + "/upload?" + new URLSearchParams({ client }), ticket });
   }
 
   const match = path.match(/^\/([\w-]{1,150})\/file$/);

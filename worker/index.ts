@@ -135,7 +135,8 @@ async function api(req: Request, env: Env) {
   if (!["GET", "HEAD"].includes(method)) {
     if (req.headers.get("Origin") !== url.origin)
       fail(403, "Origem não autorizada.");
-    if (!req.headers.get("Content-Type")?.startsWith("application/json"))
+    if (!(path === "/api/materials/upload" && method === "PUT") &&
+        !req.headers.get("Content-Type")?.startsWith("application/json"))
       fail(415, "Envie JSON.");
   }
   const ip = await digest(req.headers.get("CF-Connecting-IP") ?? "local");

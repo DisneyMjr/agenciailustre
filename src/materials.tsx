@@ -18,7 +18,7 @@ async function request<T>(url: string, data?: unknown, signal?: AbortSignal): Pr
 }
 
 async function sendFile(
-  url: string, file: File, onProgress: (value: number) => void, signal: AbortSignal,
+  url: string, ticket: string, file: File, onProgress: (value: number) => void, signal: AbortSignal,
 ) {
   let offset = 0;
   let failed = 0;
@@ -28,22 +28,27 @@ async function sendFile(
     try {
       response = await fetch(url, {
         method: "PUT", signal,
-        headers: { "Content-Range": `bytes ${offset}-${end - 1}/${file.size}`, "Content-Type": file.type },
+        headers: { "Content-Range": `bytes ${offset}-${end - 1}/${file.size}`, "Content-Type": file.type, "X-Ilustre-Upload": ticket },
         body: file.slice(offset, end, file.type),
       });
       if (response.status >= 500) throw new Error("O Drive está indisponível.");
     } catch (error) {
       if (signal.aborted || ++failed > 2) throw error;
       response = await fetch(url, {
-        method: "PUT", signal, headers: { "Content-Range": `bytes */${file.size}` },
+        method: "PUT", signal, headers: { "Content-Range": `bytes */${file.size}`, "X-Ilustre-Upload": ticket },
       });
     }
     if (response.ok) {
       onProgress(100);
       return;
     }
-    if (response.status !== 308)
-      throw new Error("O Drive recusou o envio. Confira o espaço disponível e tente novamente.");
+    if (response.status !== 308) {
+      const local = response.headers.get("Content-Type")?.includes("application/json")
+        ? await response.json<{ error?: string }>().catch(() => null) : null;
+      const reason = response.headers.get("X-Ilustre-Drive-Error");
+      if (reason === "storageQuotaExceeded") throw new Error("O Google Drive da agência está sem espaço.");
+      throw new Error(local?.error ?? ("O envio foi recusado (" + response.status + (reason ? " / " + reason : "") + ")."));
+    }
     const last = response.headers.get("Range")?.match(/^bytes=0-(\d+)$/)?.[1];
     const next = last === undefined ? 0 : Number(last) + 1;
     if (next < offset || next >= file.size)
@@ -107,9 +112,9 @@ function Library({ client, staff }: { client: string; staff: boolean }) {
     setMessage("");
     setProgress(0);
     try {
-      const { url } = await request<{ url: string }>(endpoint + "/upload?" + query,
+      const { url, ticket } = await request<{ url: string; ticket: string }>(endpoint + "/upload?" + query,
         { name: file.name, type: file.type, size: file.size }, controller.signal);
-      await sendFile(url, file, setProgress, controller.signal);
+      await sendFile(url, ticket, file, setProgress, controller.signal);
       setMessage("Material enviado.");
       await load();
     } catch (error) {
